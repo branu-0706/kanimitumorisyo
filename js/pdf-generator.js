@@ -74,7 +74,7 @@ function generateEstimateHTML() {
                      <div style="flex: 1;"></div>
                     <div style="width: 220px;">
                         <table style="width: 100%; border-collapse: collapse;">
-                            <tr style="border-bottom: 1px solid #eee;"><td style="padding: 3px 0;">見積日</td><td style="padding: 3px 0;">${formattedDate}</td></tr> 見積日  $ {formatteddate}  
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding: 3px 0;">見積日</td><td style="padding: 3px 0;">${formattedDate}</td></tr>
                             <tr style="border-bottom: 1px solid #eee;"><td style="padding: 3px 0;">見積番号</td><td style="padding: 3px 0;">${estimateNumber}</td></tr>
                             <tr><td style="padding: 3px 0;">有効期限</td><td style="padding: 3px 0;">${formattedExpiryDate}</td></tr>
                         </table>
@@ -166,7 +166,7 @@ async function generatePDF() {
         let position = 0;
         const margin = 10;
 
-        pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth - margin * 2, pdfHeight);
+        pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth - margin * 2, pdfHeight);const project = document.getElementById（ 'project'）。value;
         heightLeft -= (pageHeight - margin * 2);
 
         while (heightLeft > margin) { // 少し余裕を持たせる
@@ -210,4 +210,4 @@ function printEstimate() {
     if (!calculateBtn.dataset.calculated) { alert('先に見積を計算してください。'); return; }
     switchTab('preview');
     setTimeout(() => { window.print(); debugLog('Print dialog invoked.', 'info'); }, 300);
-}}
+}
