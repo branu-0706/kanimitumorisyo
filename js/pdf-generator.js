@@ -166,7 +166,7 @@ async function generatePDF() {
         let position = 0;
         const margin = 10;
 
-        pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth - margin * 2, pdfHeight);const project = document.getElementById（ 'project'）。value;
+        pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth - margin * 2, pdfHeight);
         heightLeft -= (pageHeight - margin * 2);
 
         while (heightLeft > margin) { // 少し余裕を持たせる
