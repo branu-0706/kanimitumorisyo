@@ -1,323 +1,213 @@
 'use strict';
 
-console.log('pdf-generator.js loading...');
-
-// --- PDF生成関数 ---
-window.generatePDF = function() {
-    console.log("Generating PDF...");
-    
-    // 必要なDOM要素の取得
-    const pdfContent = document.getElementById('pdfContent');
-    
-    if (!pdfContent) {
-        console.error("pdfContent element not found");
-        alert('PDF生成に必要な要素が見つかりません。');
-        return;
-    }
-    
-    // 見積データのバリデーション
-    if (!window.currentItems || window.currentItems.length === 0) {
-        const calculated = document.getElementById('calculateBtn')?.dataset?.calculated === 'true';
-        if (!calculated) {
-            alert('まず「計算する」ボタンを押して見積を計算してください。');
-            if (typeof window.debugLog === 'function') {
-                window.debugLog('PDF generation aborted: No estimate calculated', 'warn');
-            }
-            return;
-        }
-    }
-    
-    // ローディングスピナー表示
-    if (typeof window.showLoadingSpinner === 'function') {
-        window.showLoadingSpinner('PDFを生成中...');
-    }
-    
-    // シミュレーションのみ: 実際のPDF生成ロジック
-    simulatePdfGeneration()
-        .then(function(blob) {
-            const url = URL.createObjectURL(blob);
-            const filename = getFilename();
-            
-            // PDFをダウンロード
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            // BlobURLの解放
-            setTimeout(function() {
-                URL.revokeObjectURL(url);
-            }, 1000);
-            
-            // ローディングスピナー非表示
-            if (typeof window.hideLoadingSpinner === 'function') {
-                window.hideLoadingSpinner();
-            }
-            
-            if (typeof window.debugLog === 'function') {
-                window.debugLog(`PDF generated and downloaded as ${filename}`, 'info');
-            }
-        })
-        .catch(function(error) {
-            console.error('PDF generation error:', error);
-            
-            // エラー表示
-            if (typeof window.showLoadingError === 'function') {
-                window.showLoadingError('PDF生成中にエラーが発生しました。ブラウザの設定を確認し、再試行してください。');
-            } else if (typeof window.hideLoadingSpinner === 'function') {
-                window.hideLoadingSpinner();
-                alert('PDF生成中にエラーが発生しました。ブラウザの設定を確認し、再試行してください。');
-            }
-            
-            if (typeof window.debugLog === 'function') {
-                window.debugLog('PDF generation failed: ' + error.message, 'error');
-            }
-        });
-    
-    // タイムアウト設定
-    window.pdfGenerationTimeout = setTimeout(function() {
-        if (window.pdfGenerationCancelled) return;
-        
-        if (typeof window.showLoadingError === 'function') {
-            window.showLoadingError('PDF生成がタイムアウトしました。印刷機能を使用するか、再試行してください。');
-        }
-        
-        if (typeof window.debugLog === 'function') {
-            window.debugLog(`PDF generation timed out after ${window.pdfTimeoutValue} seconds`, 'error');
-        }
-    }, (window.pdfTimeoutValue || 15) * 1000);
-};
-
-// PDF生成のシミュレーション（実際の実装に置き換える）
-function simulatePdfGeneration() {
-    return new Promise((resolve, reject) => {
-        // 模擬的な処理遅延
-        const delay = Math.random() * 1000 + 500; // 0.5〜1.5秒
-        
-        setTimeout(() => {
-            if (window.pdfGenerationCancelled) {
-                reject(new Error('PDF generation was cancelled'));
-                return;
-            }
-            
-            // ダミーPDFデータ（実際の実装では、pdfContent の内容からPDFを生成）
-            const dummyPdfData = new Uint8Array([37, 80, 68, 70, 45, 49, 46, 52, 10, 37, 226, 227, 207, 211, 10]);
-            const blob = new Blob([dummyPdfData], { type: 'application/pdf' });
-            
-            resolve(blob);
-        }, delay);
-    });
-}
-
-// --- 印刷機能 ---
-window.printEstimate = function() {
-    console.log("Printing estimate...");
-    
-    // 必要なDOM要素の取得
-    const pdfContent = document.getElementById('pdfContent');
-    
-    if (!pdfContent) {
-        console.error("pdfContent element not found");
-        alert('印刷に必要な要素が見つかりません。');
-        return;
-    }
-    
-    // 見積データのバリデーション
-    if (!window.currentItems || window.currentItems.length === 0) {
-        const calculated = document.getElementById('calculateBtn')?.dataset?.calculated === 'true';
-        if (!calculated) {
-            alert('まず「計算する」ボタンを押して見積を計算してください。');
-            if (typeof window.debugLog === 'function') {
-                window.debugLog('Print aborted: No estimate calculated', 'warn');
-            }
-            return;
-        }
-    }
-    
-    // 印刷プレビューを開く
+// --- PDF生成関連の関数 ---
+function generateEstimateHTML() {
     try {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            alert('印刷ウィンドウを開けませんでした。ポップアップがブロックされている可能性があります。');
-            if (typeof window.debugLog === 'function') {
-                window.debugLog('Print window could not be opened', 'error');
-            }
-            return;
+        const client = document.getElementById('client').value;
+        const project = document.getElementById('project').value;
+        let estimateNumber = document.getElementById('estimateNumber').value.trim();
+        if (!estimateNumber) {
+            estimateNumber = generateEstimateNumber();
+            document.getElementById('estimateNumber').value = estimateNumber;
         }
-        
-        // プリントスタイルシートを含む印刷用HTMLを生成
-        const printContent = `
-            <!DOCTYPE html>
-            <html lang="ja">
-            <head>
-                <meta charset="UTF-8">
-                <title>見積書</title>
-                <style>
-                    body {
-                        font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-                        margin: 0;
-                        padding: 0;
-                    }
-                    .print-container {
-                        max-width: 210mm;
-                        margin: 0 auto;
-                        padding: 10mm;
-                    }
-                    ${getPrintStyles()}
-                </style>
-            </head>
-            <body>
-                <div class="print-container">
-                    ${pdfContent.innerHTML}
+        const estimateDate = document.getElementById('estimateDate').value;
+        const formattedDate = formatDateJP(estimateDate);
+
+        const expiryDays = parseInt(document.getElementById('expiryDays').value) || 30;
+        let formattedExpiryDate = '';
+        if(estimateDate) {
+            const expiryDate = new Date(estimateDate);
+            if (!isNaN(expiryDate.getTime())) {
+                expiryDate.setDate(expiryDate.getDate() + expiryDays);
+                formattedExpiryDate = formatDateJP(expiryDate.toISOString().split('T')[0]);
+            }
+        }
+
+        const notes = document.getElementById('notes').value;
+        const noteItems = notes.split('\n').filter(note => note.trim() !== '');
+
+        let estimateSubtotal = 0;
+        currentItems.forEach(item => { estimateSubtotal += item.amount; });
+        const roundedSubtotal = Math.round(estimateSubtotal);
+        const tax = Math.round(roundedSubtotal * 0.1);
+        const total = roundedSubtotal + tax;
+
+        let itemsHTML = '';
+        currentItems.forEach(item => {
+            const displayPrice = (item.cost || 0) * (item.markupRate || 0);
+            itemsHTML += `
+                <tr>
+                    <td style="text-align: center;">${item.no}</td>
+                    <td class="long-text">${item.description}</td>
+                    <td style="text-align: center;">${item.quantity}</td>
+                    <td style="text-align: center;">${item.unit}</td>
+                    <td style="text-align: right;">${formatCurrency(displayPrice, false)}</td>
+                    <td style="text-align: right;">${formatCurrency(Math.round(item.amount), false)}</td>
+                </tr>
+            `;
+        });
+
+        let notesHTML = '';
+        if (noteItems.length > 0) {
+            notesHTML = `<div class="estimate-notes"><div class="notes-title">備考</div>${noteItems.map(note => `<div class="note-item">${note.startsWith('※') ? note : '※ ' + note}</div>`).join('')}</div>`;
+        }
+
+        const html = `
+            <div class="estimate-sheet">
+                <div class="estimate-header">
+                    <div class="estimate-title">御見積書</div>
+                    <div class="client-info"><div class="client-name">${client} 御中</div></div>
+                    <div class="company-info">
+                        ${companyInfo.name ? `<div>${companyInfo.name}</div>` : ''}
+                        ${companyInfo.postal ? `<div>〒${companyInfo.postal}</div>` : ''}
+                        ${companyInfo.address ? `<div>${companyInfo.address}</div>` : ''}
+                        ${companyInfo.phone ? `<div>TEL: ${companyInfo.phone}</div>` : ''}
+                        ${companyInfo.fax ? `<div>FAX: ${companyInfo.fax}</div>` : ''}
+                        ${companyInfo.stamp ? `<img src="${companyInfo.stamp}" class="company-stamp" alt="印影" style="position: absolute; top: -15px; right: -5px;">` : ''}
+                    </div>
                 </div>
-                <script>
-                    window.onload = function() {
-                        setTimeout(function() {
-                            window.print();
-                            setTimeout(function() {
-                                window.close();
-                            }, 500);
-                        }, 300);
-                    };
-                </script>
-            </body>
-            </html>
-        `;
-        
-        printWindow.document.open();
-        printWindow.document.write(printContent);
-        printWindow.document.close();
-        
-        if (typeof window.debugLog === 'function') {
-            window.debugLog('Print window opened', 'info');
-        }
-    } catch (error) {
-        console.error('Print error:', error);
-        alert('印刷中にエラーが発生しました: ' + error.message);
-        
-        if (typeof window.debugLog === 'function') {
-            window.debugLog('Print failed: ' + error.message, 'error');
-        }
-    }
-};
-
-// 印刷用スタイルの取得
-function getPrintStyles() {
-    return `
-        .estimate-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-        .doc-title {
-            font-size: 24px;
-            font-weight: bold;
-        }
-        .doc-info {
-            text-align: right;
-        }
-        .client-info {
-            margin-bottom: 20px;
-        }
-        .client-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .project {
-            font-size: 16px;
-        }
-        .company-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-        }
-        .company-details {
-            flex: 2;
-        }
-        .company-name {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .company-stamp, .company-logo {
-            flex: 1;
-            text-align: right;
-        }
-        .stamp-image, .logo-image {
-            max-width: 100px;
-            max-height: 100px;
-        }
-        .estimate-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 30px;
-        }
-        .estimate-table th, .estimate-table td {
-            border: 1px solid #000;
-            padding: 8px;
-        }
-        .estimate-table th {
-            background-color: #f0f0f0;
-            text-align: center;
-        }
-        .item-no { width: 5%; }
-        .item-desc { width: 40%; }
-        .item-quantity { width: 10%; text-align: right; }
-        .item-unit { width: 10%; text-align: center; }
-        .item-price { width: 15%; text-align: right; }
-        .item-amount { width: 20%; text-align: right; }
-        .total-amount { font-weight: bold; }
-        .estimate-notes {
-            border: 1px solid #000;
-            padding: 10px;
-        }
-        .estimate-notes h4 {
-            margin-top: 0;
-            margin-bottom: 10px;
-        }
-        .note-items div {
-            margin-bottom: 5px;
-        }
-        .no-data {
-            text-align: center;
-            padding: 20px;
-            font-style: italic;
-            color: #666;
-        }
-        tfoot td {
-            font-weight: bold;
-        }
-        @media print {
-            @page {
-                size: A4;
-                margin: 0;
-            }
-            body {
-                margin: 1cm;
-            }
-        }
-    `;
-}
-
-// ファイル名の生成
-function getFilename() {
-    const client = document.getElementById('client')?.value || '顧客';
-    const estimateNumber = document.getElementById('estimateNumber')?.value || '';
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
-    
-    // スペースや特殊文字をアンダースコアに置換
-    const cleanClient = client.replace(/[\/\\\:\*\?"<>\|]/g, '_').replace(/\s+/g, '_');
-    
-    if (estimateNumber) {
-        return `見積書_${cleanClient}_${estimateNumber}.pdf`;
-    } else {
-        return `見積書_${cleanClient}_${dateStr}.pdf`;
+                <div style="margin-bottom: 10px;">下記の通り御見積もり申し上げます。</div>
+                <div class="estimate-info">
+                    <table style="width: 100%;"><tr><td style="width: 15%;">件名</td><td style="width: 85%;">${project}</td></tr></table>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                     <div style="flex: 1;"></div>
+                    <div style="width: 220px;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding: 3px 0;">見積日</td><td style="padding: 3px 0;">${formattedDate}</td></tr>
+                            <tr style="border-bottom: 1px solid #eee;"><td style="padding: 3px 0;">見積番号</td><td style="padding: 3px 0;">${estimateNumber}</td></tr>
+                            <tr><td style="padding: 3px 0;">有効期限</td><td style="padding: 3px 0;">${formattedExpiryDate}</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div class="estimate-amount">見積金額 ${formatCurrency(total)}</div>
+                <table class="estimate-detail">
+                    <thead><tr><th style="width: 5%;">No.</th><th style="width: 45%;">摘要</th><th style="width: 10%;">数量</th><th style="width: 10%;">単位</th><th style="width: 15%;">単価</th><th style="width: 15%;">金額</th></tr></thead>
+                    <tbody>${itemsHTML}</tbody>
+                </table>
+                <div style="width: 100%; display: flex; justify-content: flex-end;">
+                    <table class="estimate-totals">
+                        <tr><td>小計</td><td>${formatCurrency(roundedSubtotal)}</td></tr>
+                        <tr><td>消費税</td><td>${formatCurrency(tax)}</td></tr>
+                        <tr><td>合計</td><td>${formatCurrency(total)}</td></tr>
+                    </table>
+                </div>
+                ${notesHTML}
+            </div>`;
+        return html;
+    } catch (e) {
+        debugLog('Error generating estimate HTML: ' + e.message, 'error');
+        console.error('Error generating estimate HTML:', e);
+        return `<div class="alert alert-danger">見積書HTMLの生成中にエラーが発生しました: ${e.message}</div>`;
     }
 }
 
-console.log('pdf-generator.js loaded successfully!');
+async function generatePDF() {
+    if (!calculateBtn.dataset.calculated) { alert('先に見積を計算してください。'); return; }
+    pdfGenerationCancelled = false;
+    showLoadingSpinner('PDFを生成中...');
+
+    try {
+        pdfEstimateSheet.innerHTML = generateEstimateHTML();
+        debugLog('PDF estimate sheet HTML generated', 'info');
+
+        const headerElement = pdfEstimateSheet.querySelector('.estimate-header');
+        const companyInfoElement = pdfEstimateSheet.querySelector('.company-info');
+        const existingStamp = pdfEstimateSheet.querySelector('.company-stamp'); // HTMLテンプレート内の印影を取得
+        if(existingStamp) existingStamp.style.display = 'none'; // 一旦非表示に
+
+        if (companyInfo.logo && headerElement) {
+            const logoImg = new Image();
+            logoImg.onload = () => { debugLog('Company logo loaded for PDF', 'info'); }; // 画像ロード完了ログ
+            logoImg.onerror = () => { debugLog('Company logo failed to load for PDF', 'warn'); }; // エラーログ
+            logoImg.src = companyInfo.logo;
+            logoImg.className = 'company-logo';
+            logoImg.style.position = 'absolute'; logoImg.style.top = '0px'; logoImg.style.right = '0px';
+            // 既存のロゴがあれば削除
+            const oldLogo = headerElement.querySelector('.company-logo');
+            if (oldLogo) oldLogo.remove();
+            headerElement.appendChild(logoImg);
+        }
+        if (companyInfo.stamp && companyInfoElement) {
+            const stampImg = new Image();
+            stampImg.onload = () => { debugLog('Company stamp loaded for PDF', 'info'); };
+            stampImg.onerror = () => { debugLog('Company stamp failed to load for PDF', 'warn'); };
+            stampImg.src = companyInfo.stamp;
+            stampImg.className = 'company-stamp';
+            stampImg.style.position = 'absolute'; stampImg.style.top = '-15px'; stampImg.style.right = '-5px';
+            // 既存の印影があれば削除
+            const oldStamp = companyInfoElement.querySelector('.company-stamp');
+            if (oldStamp) oldStamp.remove();
+            companyInfoElement.appendChild(stampImg); // companyInfoElementに追加
+        }
+
+        pdfContent.style.display = 'block';
+        await new Promise(resolve => setTimeout(resolve, 500)); // レンダリングと画像読み込み待ち時間を少し長く
+
+        if (pdfGenerationCancelled) throw new Error("Cancelled");
+
+        const { jsPDF } = window.jspdf;
+        const canvas = await html2canvas(pdfContent, {
+            scale: 2, useCORS: true, allowTaint: false, logging: isDebugMode, // allowTaint は false推奨
+            scrollX: 0, scrollY: 0,
+            windowWidth: pdfContent.scrollWidth, windowHeight: pdfContent.scrollHeight
+        });
+
+        if (pdfGenerationCancelled) throw new Error("Cancelled");
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.9);
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const imgProps= pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        let heightLeft = pdfHeight;
+        let position = 0;
+        const margin = 10;
+
+        pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth - margin * 2, pdfHeight);
+        heightLeft -= (pageHeight - margin * 2);
+
+        while (heightLeft > margin) { // 少し余裕を持たせる
+            position -= (pageHeight - margin*2 ); // 重なりを調整
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', margin, position + margin , pdfWidth - margin * 2, pdfHeight);
+            heightLeft -= (pageHeight - margin * 2);
+            if (pdf.internal.getNumberOfPages() > 10) throw new Error("PDF pages > 10");
+        }
+
+        const clientName = document.getElementById('client').value.trim().replace(/[\\/:*?"<>|]/g, '_') || '見積書';
+        const dateStr = document.getElementById('estimateDate').value.replace(/-/g, '') || formatDateJP(new Date().toISOString().split('T')[0]).replace(/年|月|日/g, '');
+        const fileName = `見積書_${clientName}_${dateStr}.pdf`;
+
+        pdf.save(fileName);
+        debugLog(`PDF saved as ${fileName}`, 'info');
+
+    } catch (e) {
+        if (e.message !== "Cancelled") {
+            console.error('PDF Generation Error:', e);
+            debugLog('PDF Generation Error: ' + e.message, 'error');
+            alert('PDF生成中にエラーが発生しました。\n内容が複雑すぎるか、画像に問題がある可能性があります。\nブラウザの印刷機能で代用してください。');
+            spinnerActions.style.display = 'flex';
+            alternativePdfBtn.style.display = 'inline-block';
+            cancelPdfBtn.textContent = '閉じる';
+            pdfGenerationTimeout = null;
+        } else {
+            debugLog('PDF generation cancelled.', 'warn');
+        }
+    } finally {
+        if (!pdfGenerationCancelled || cancelPdfBtn.textContent === '閉じる') {
+            hideLoadingSpinner();
+        }
+        pdfContent.style.display = 'none';
+        cancelPdfBtn.textContent = 'キャンセル'; // ボタンテキストを元に戻す
+        debugLog('PDF generation process finished or cancelled.', 'info');
+    }
+}
+
+function printEstimate() {
+    if (!calculateBtn.dataset.calculated) { alert('先に見積を計算してください。'); return; }
+    switchTab('preview');
+    setTimeout(() => { window.print(); debugLog('Print dialog invoked.', 'info'); }, 300);
+}
