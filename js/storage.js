@@ -1,223 +1,243 @@
-// storage.js の修正版
 'use strict';
 
-// --- 定数定義 --- (グローバルスコープに定義)
-window.DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）
-window.DEBUG_KEY = 'estimateAppDebugMode';
-window.TIMEOUT_KEY = 'estimateAppPdfTimeout';
-window.COMPANY_INFO_KEY = 'estimateAppCompanyInfo';
+// --- 計算関連の関数を window オブジェクトに追加 ---
+window.updateAmounts = function() {
+    console.log("updateAmounts called"); // デバッグログ追加
+    if (!window.itemTableBody) {
+        console.error("itemTableBody element not found");
+        return;
+    }
+    
+    const rows = window.itemTableBody.rows;
+    let subtotal = 0;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // --- グローバル変数 ---
-    window.pdfGenerationTimeout = null;
-    window.pdfTimeoutValue = window.DEFAULT_TIMEOUT;
-    window.pdfGenerationCancelled = false;
-    window.currentTotalCost = 0; // 原価合計
-    window.currentItems = []; // 明細データ
-    window.companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
-    window.storageAvailable = false;
-    window.isDebugMode = false;
+    for (let i = 0; i < rows.length; i++) {
+        const qtyInput = rows[i].querySelector('input[name="quantity[]"]');
+        const costInput = rows[i].querySelector('input[name="cost[]"]');
+        const markupRateInput = rows[i].querySelector('input[name="markupRate[]"]');
+        const amountInput = rows[i].querySelector('input[name="amount[]"]');
 
-    // --- ストレージ関連の関数 ---
-    window.checkStorage = function() {
-        try {
-            localStorage.setItem('__test_storage__', 'test');
-            localStorage.removeItem('__test_storage__');
-            window.storageAvailable = true;
-            if (typeof window.debugLog === 'function') {
-                window.debugLog('LocalStorage is available.', 'info');
-            } else {
-                console.log('[INFO] LocalStorage is available.');
-            }
-        } catch (e) {
-            window.storageAvailable = false;
-            if (window.storageWarning) window.storageWarning.classList.remove('hidden');
-            console.warn('LocalStorage is not available.', e);
-            if (typeof window.debugLog === 'function') {
-                window.debugLog('LocalStorage is not available.', 'warn');
-            }
-        }
-    };
-
-    // 設定をロードする関数
-    window.loadSettings = function() {
-        if (!window.storageAvailable) return;
-
-        // デバッグモードの設定をロード
-        const debugMode = localStorage.getItem(window.DEBUG_KEY);
-        window.isDebugMode = debugMode === 'true';
-
-        // PDFタイムアウト値をロード
-        const timeout = localStorage.getItem(window.TIMEOUT_KEY);
-        if (timeout) {
-            const value = parseInt(timeout, 10);
-            window.pdfTimeoutValue = (!isNaN(value) && value >= 5 && value <= 120) ? value : window.DEFAULT_TIMEOUT;
+        if (!qtyInput || !costInput || !markupRateInput || !amountInput) {
+            console.error("Row", i, "has missing inputs");
+            continue;
         }
 
-        // デバッグログ出力
-        if (typeof window.debugLog === 'function') {
-            window.debugLog(`Settings loaded - Debug Mode: ${window.isDebugMode}, PDF Timeout: ${window.pdfTimeoutValue}s`, 'info');
+        const qty = parseFloat(qtyInput.value) || 0;
+        const cost = parseFloat(costInput.value) || 0;
+        const markupRate = parseFloat(markupRateInput.value) || 0;
+
+        // 金額計算: 数量 × 原価 × 掛け率
+        const amount = qty * cost * markupRate;
+        console.log(`Row ${i}: qty=${qty}, cost=${cost}, rate=${markupRate}, amount=${amount}`);
+
+        amountInput.value = window.formatCurrency(amount);
+        subtotal += amount;
+    }
+
+    const tax = subtotal * 0.1;
+    const total = subtotal + tax;
+
+    console.log(`Subtotal: ${subtotal}, Tax: ${tax}, Total: ${total}`);
+
+    if (window.subtotalElement) window.subtotalElement.textContent = window.formatCurrency(Math.round(subtotal));
+    if (window.taxElement) window.taxElement.textContent = window.formatCurrency(Math.round(tax));
+    if (window.totalElement) window.totalElement.textContent = window.formatCurrency(Math.round(total));
+};
+
+window.calculateEstimate = function() {
+    console.log("calculateEstimate called");
+    
+    window.currentItems = [];
+    if (!window.itemTableBody) {
+        console.error("itemTableBody element not found");
+        return;
+    }
+    
+    const rows = window.itemTableBody.rows;
+    let totalCostSum = 0;
+    let estimateSubtotal = 0;
+
+    console.log(`Processing ${rows.length} rows`);
+
+    for (let i = 0; i < rows.length; i++) {
+        const descriptionInput = rows[i].querySelector('input[name="description[]"]');
+        const quantityInput = rows[i].querySelector('input[name="quantity[]"]');
+        const unitSelect = rows[i].querySelector('select[name="unit[]"]');
+        const costInput = rows[i].querySelector('input[name="cost[]"]');
+        const markupRateInput = rows[i].querySelector('input[name="markupRate[]"]');
+
+        if (!descriptionInput || !quantityInput || !unitSelect || !costInput || !markupRateInput) {
+            console.error("Row", i, "has missing inputs");
+            continue;
+        }
+
+        const description = descriptionInput.value.trim();
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const unit = unitSelect.value;
+        const cost = parseFloat(costInput.value) || 0;
+        const markupRate = parseFloat(markupRateInput.value) || 0;
+
+        console.log(`Row ${i}: description=${description}, quantity=${quantity}, unit=${unit}, cost=${cost}, markupRate=${markupRate}`);
+
+        // 明細金額: 数量 × 原価 × 掛け率
+        const itemAmount = quantity * cost * markupRate;
+        // 原価合計: 数量 × 原価
+        const itemCostSum = quantity * cost;
+
+        console.log(`Row ${i}: itemAmount=${itemAmount}, itemCostSum=${itemCostSum}`);
+
+        window.currentItems.push({
+            no: i + 1,
+            description,
+            quantity,
+            unit,
+            cost,
+            markupRate,
+            amount: itemAmount
+        });
+
+        totalCostSum += itemCostSum;
+        estimateSubtotal += itemAmount;
+    }
+
+    console.log(`Total cost sum: ${totalCostSum}, Estimate subtotal: ${estimateSubtotal}`);
+    
+    window.currentTotalCost = totalCostSum;
+
+    const tax = estimateSubtotal * 0.1;
+    const total = estimateSubtotal + tax;
+
+    // 粗利と粗利率の計算
+    const grossProfit = estimateSubtotal - totalCostSum;
+    let grossMarginPercent = 0;
+
+    console.log(`Gross profit: ${grossProfit}`);
+
+    if (estimateSubtotal > 0) {
+        grossMarginPercent = (grossProfit / estimateSubtotal) * 100;
+    } else if (totalCostSum === 0) {
+        grossMarginPercent = 0;
+    } else {
+        grossMarginPercent = -100;
+    }
+
+    console.log(`Calculated gross margin: ${grossMarginPercent}%`);
+
+    // 結果の表示
+    const resultSubtotalElement = document.getElementById('resultSubtotal');
+    const resultTotalElement = document.getElementById('resultTotal');
+    const resultTotalCostElement = document.getElementById('resultTotalCost');
+    const grossMarginElement = document.getElementById('resultGrossMarginPercent');
+
+    if (resultSubtotalElement) resultSubtotalElement.textContent = window.formatCurrency(Math.round(estimateSubtotal));
+    if (resultTotalElement) resultTotalElement.textContent = window.formatCurrency(Math.round(total));
+    if (resultTotalCostElement) resultTotalCostElement.textContent = window.formatCurrency(Math.round(totalCostSum));
+
+    if (grossMarginElement) {
+        if (isNaN(grossMarginPercent)) {
+            grossMarginElement.textContent = '---';
+        } else if (!isFinite(grossMarginPercent)) {
+            grossMarginElement.textContent = (grossMarginPercent > 0 ? '+' : '-') + '∞ %';
         } else {
-            console.log(`[INFO] Settings loaded - Debug Mode: ${window.isDebugMode}, PDF Timeout: ${window.pdfTimeoutValue}s`);
+            grossMarginElement.textContent = `${grossMarginPercent.toFixed(1)}%`;
         }
-    };
+    }
 
-    // 会社情報をロードする関数
-    window.loadCompanyInfo = function() {
-        if (!window.storageAvailable) return;
+    console.log(`Final results - Subtotal: ${window.formatCurrency(Math.round(estimateSubtotal))}, Total: ${window.formatCurrency(Math.round(total))}, Cost: ${window.formatCurrency(Math.round(totalCostSum))}, Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`);
 
-        const savedInfo = localStorage.getItem(window.COMPANY_INFO_KEY);
-        if (savedInfo) {
-            try {
-                const info = JSON.parse(savedInfo);
-                window.companyInfo = Object.assign({}, window.companyInfo, info);
-                
-                // フォームに値をセット
-                if (window.companySettingsForm) {
-                    window.companySettingsForm.querySelector('#companyName').value = window.companyInfo.name || '';
-                    window.companySettingsForm.querySelector('#companyPostal').value = window.companyInfo.postal || '';
-                    window.companySettingsForm.querySelector('#companyAddress').value = window.companyInfo.address || '';
-                    window.companySettingsForm.querySelector('#companyPhone').value = window.companyInfo.phone || '';
-                    window.companySettingsForm.querySelector('#companyFax').value = window.companyInfo.fax || '';
-                    
-                    // ロゴとスタンプの画像を設定
-                    if (window.companyInfo.logo && window.companyLogoPreview) {
-                        window.companyLogoPreview.src = window.companyInfo.logo;
-                        window.companyLogoPreview.style.display = 'block';
-                        if (window.removeLogoBtn) window.removeLogoBtn.style.display = 'inline-block';
-                    }
-                    
-                    if (window.companyInfo.stamp && window.companyStampPreview) {
-                        window.companyStampPreview.src = window.companyInfo.stamp;
-                        window.companyStampPreview.style.display = 'block';
-                        if (window.removeStampBtn) window.removeStampBtn.style.display = 'inline-block';
-                    }
-                }
-                
-                if (typeof window.debugLog === 'function') {
-                    window.debugLog('Company information loaded.', 'info');
-                } else {
-                    console.log('[INFO] Company information loaded.');
-                }
-            } catch (e) {
-                console.error('Failed to parse company information.', e);
-                if (typeof window.debugLog === 'function') {
-                    window.debugLog('Failed to parse company information: ' + e.message, 'error');
-                }
+    if (typeof window.debugLog === 'function') {
+        window.debugLog(`Estimate calculated. Raw Total Cost: ${totalCostSum}, Raw Estimate Subtotal: ${estimateSubtotal}, Gross Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`, 'info');
+    }
+
+    if (window.estimateResult) {
+        window.estimateResult.classList.remove('hidden');
+        window.estimateResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    
+    if (window.calculateBtn) {
+        window.calculateBtn.dataset.calculated = 'true';
+    }
+};
+
+window.validateForm = function() {
+    const client = document.getElementById('client').value.trim();
+    const project = document.getElementById('project').value.trim();
+    if (!client) { alert('見積提出先を入力してください'); document.getElementById('client').focus(); return false; }
+    if (!project) { alert('件名を入力してください'); document.getElementById('project').focus(); return false; }
+
+    if (!window.itemTableBody) {
+        console.error("itemTableBody element not found");
+        return false;
+    }
+    
+    const rows = window.itemTableBody.rows;
+    if (rows.length === 0) { alert('明細行を1行以上入力してください'); return false;}
+
+    for (let i = 0; i < rows.length; i++) {
+        const rowNum = i + 1;
+        const descriptionInput = rows[i].querySelector('input[name="description[]"]');
+        const quantityInput = rows[i].querySelector('input[name="quantity[]"]');
+        const costInput = rows[i].querySelector('input[name="cost[]"]');
+        const markupRateInput = rows[i].querySelector('input[name="markupRate[]"]');
+
+        const description = descriptionInput.value.trim();
+        const quantity = quantityInput.value;
+        const cost = costInput.value;
+        const markupRate = markupRateInput.value;
+
+        if (!description) { alert(`${rowNum}行目の摘要を入力してください`); descriptionInput.focus(); return false; }
+        if (quantity === '' || isNaN(parseFloat(quantity)) || parseFloat(quantity) <= 0) {
+            alert(`${rowNum}行目の数量を正しく入力してください (0より大きい数値)`); quantityInput.focus(); return false;
+        }
+        if (cost === '' || isNaN(parseFloat(cost))) {
+            alert(`${rowNum}行目の原価を数値で入力してください`); costInput.focus(); return false;
+        }
+        if (markupRate === '' || isNaN(parseFloat(markupRate))) {
+            alert(`${rowNum}行目の掛け率を数値で入力してください`); markupRateInput.focus(); return false;
+        }
+        if (parseFloat(markupRate) <= 0 && cost !== '0' && parseFloat(cost) !== 0) {
+            if (!confirm(`${rowNum}行目の掛け率が0以下です。この明細の金額が0またはマイナスになりますが、よろしいですか？`)) {
+                markupRateInput.focus(); return false;
             }
         }
-    };
-
-    // 会社情報を保存する関数
-    window.saveCompanyInfo = function() {
-        if (!window.storageAvailable || !window.companySettingsForm) return;
-        
-        const form = window.companySettingsForm;
-        window.companyInfo.name = form.querySelector('#companyName').value.trim();
-        window.companyInfo.postal = form.querySelector('#companyPostal').value.trim();
-        window.companyInfo.address = form.querySelector('#companyAddress').value.trim();
-        window.companyInfo.phone = form.querySelector('#companyPhone').value.trim();
-        window.companyInfo.fax = form.querySelector('#companyFax').value.trim();
-        
-        // ローカルストレージに保存
-        localStorage.setItem(window.COMPANY_INFO_KEY, JSON.stringify(window.companyInfo));
-        
-        if (typeof window.debugLog === 'function') {
-            window.debugLog('Company information saved.', 'info');
-        } else {
-            console.log('[INFO] Company information saved.');
-        }
-        
-        // 成功メッセージを表示
-        alert('会社情報を保存しました。');
-    };
-
-    // 画像アップロード処理
-    window.handleImageUpload = function(input, preview, removeBtn) {
-        if (!input.files || !input.files[0]) return;
-        
-        const file = input.files[0];
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            const imageType = input.id === 'companyLogo' ? 'logo' : 'stamp';
-            window.companyInfo[imageType] = e.target.result;
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-            removeBtn.style.display = 'inline-block';
-            
-            if (window.storageAvailable) {
-                localStorage.setItem(window.COMPANY_INFO_KEY, JSON.stringify(window.companyInfo));
-                if (typeof window.debugLog === 'function') {
-                    window.debugLog(`Company ${imageType} updated.`, 'info');
-                } else {
-                    console.log(`[INFO] Company ${imageType} updated.`);
-                }
-            }
-        };
-        
-        reader.readAsDataURL(file);
-    };
-
-    // 画像削除処理
-    window.removeImage = function(preview, removeBtn, input, type) {
-        preview.src = '';
-        preview.style.display = 'none';
-        removeBtn.style.display = 'none';
-        input.value = '';
-        
-        window.companyInfo[type] = '';
-        if (window.storageAvailable) {
-            localStorage.setItem(window.COMPANY_INFO_KEY, JSON.stringify(window.companyInfo));
-            if (typeof window.debugLog === 'function') {
-                window.debugLog(`Company ${type} removed.`, 'info');
-            } else {
-                console.log(`[INFO] Company ${type} removed.`);
+        if (parseFloat(cost) < 0) {
+            if (!confirm(`${rowNum}行目の原価がマイナスです。よろしいですか？`)) {
+                costInput.focus(); return false;
             }
         }
-    };
+    }
+    return true;
+};
 
-    // 設定をクリアする関数
-    window.clearAllSettings = function() {
-        if (!window.storageAvailable) return;
-        
-        if (confirm('すべての設定と会社情報を削除しますか？この操作は元に戻せません。')) {
-            localStorage.removeItem(window.DEBUG_KEY);
-            localStorage.removeItem(window.TIMEOUT_KEY);
-            localStorage.removeItem(window.COMPANY_INFO_KEY);
-            
-            // デフォルト値に戻す
-            window.isDebugMode = false;
-            window.pdfTimeoutValue = window.DEFAULT_TIMEOUT;
-            window.companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
-            
-            // UI更新
-            if (window.debugPanel) window.debugPanel.style.display = 'none';
-            if (window.debugModeCheckbox) window.debugModeCheckbox.checked = false;
-            if (window.pdfTimeoutInput) window.pdfTimeoutInput.value = window.DEFAULT_TIMEOUT;
-            
-            // 会社情報フォームをクリア
-            if (window.companySettingsForm) {
-                window.companySettingsForm.reset();
-                if (window.companyLogoPreview) {
-                    window.companyLogoPreview.src = '';
-                    window.companyLogoPreview.style.display = 'none';
-                }
-                if (window.removeLogoBtn) window.removeLogoBtn.style.display = 'none';
-                if (window.companyStampPreview) {
-                    window.companyStampPreview.src = '';
-                    window.companyStampPreview.style.display = 'none';
-                }
-                if (window.removeStampBtn) window.removeStampBtn.style.display = 'none';
-            }
-            
-            if (typeof window.debugLog === 'function') {
-                window.debugLog('All settings cleared.', 'warn');
-            } else {
-                console.log('[WARN] All settings cleared.');
-            }
-            
-            alert('設定を初期化しました。');
-        }
-    };
-});
+window.formatCurrency = function(amount, withSymbol = true) {
+    if (typeof amount !== 'number' || !isFinite(amount)) {
+        return withSymbol ? '¥---' : '---';
+    }
+    const num = Math.round(amount);
+    const formattedAmount = num.toLocaleString();
+    return withSymbol ? `¥${formattedAmount}` : formattedAmount;
+};
+
+window.formatDateJP = function(dateString) {
+    if (!dateString) return '';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        return `${year}年${month}月${day}日`;
+    } catch (e) {
+        console.error("Error formatting date:", dateString, e);
+        return '';
+    }
+};
+
+window.generateEstimateNumber = function() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `Q-${year}${month}${day}-${random}`;
+};
