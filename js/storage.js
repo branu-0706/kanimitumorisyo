@@ -2,10 +2,6 @@
 
 // --- 定数定義 ---
 const DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）
-
-'use strict';
-
-// --- ストレージ関連の定数 ---
 const DEBUG_KEY = 'estimateAppDebugMode';
 const TIMEOUT_KEY = 'estimateAppPdfTimeout';
 const COMPANY_INFO_KEY = 'estimateAppCompanyInfo';
@@ -155,7 +151,7 @@ function handleImageUpload(inputElement, previewElement, removeBtn) {
         alert('ファイルの読み込みに失敗しました。');
         inputElement.value = '';
     }
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(file);reader.readasdataurl（file）;
 }
 
 function removeImage(previewElement, removeBtn, inputElement, infoKey) {
