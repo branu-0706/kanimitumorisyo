@@ -12,18 +12,18 @@ function updateAmounts() {
         const markupRateInput = rows[i].querySelector('input[name="markupRate[]"]');
         const amountInput = rows[i].querySelector('input[name="amount[]"]');
 
-        if (!qtyInput || !costInput || !markupRateInput || !amountInput) {
-            console.error("Row", i, "has missing inputs");
-            continue;
-        }
+        console.log("Row", i, "inputs:", {  // デバッグログ追加
+            qty: qtyInput ? qtyInput.value : "not found",
+            cost: costInput ? costInput.value : "not found",
+            rate: markupRateInput ? markupRateInput.value : "not found"
+        });
 
         const qty = parseFloat(qtyInput.value) || 0;
         const cost = parseFloat(costInput.value) || 0;
         const markupRate = parseFloat(markupRateInput.value) || 0;
 
-        // 金額計算: 数量 × 原価 × 掛け率
         const amount = qty * cost * markupRate;
-        console.log(`Row ${i}: qty=${qty}, cost=${cost}, rate=${markupRate}, amount=${amount}`);
+        console.log("Calculated amount:", amount);  // デバッグログ追加
 
         amountInput.value = formatCurrency(amount);
         subtotal += amount;
@@ -32,121 +32,63 @@ function updateAmounts() {
     const tax = subtotal * 0.1;
     const total = subtotal + tax;
 
-    console.log(`Subtotal: ${subtotal}, Tax: ${tax}, Total: ${total}`);
-
-    if (subtotalElement) subtotalElement.textContent = formatCurrency(Math.round(subtotal));
-    if (taxElement) taxElement.textContent = formatCurrency(Math.round(tax));
-    if (totalElement) totalElement.textContent = formatCurrency(Math.round(total));
+    subtotalElement.textContent = formatCurrency(Math.round(subtotal));
+    taxElement.textContent = formatCurrency(Math.round(tax));
+    totalElement.textContent = formatCurrency(Math.round(total));
 }
 
 function calculateEstimate() {
-    console.log("calculateEstimate called");
-    
     currentItems = [];
     const rows = itemTableBody.rows;
     let totalCostSum = 0;
     let estimateSubtotal = 0;
 
-    console.log(`Processing ${rows.length} rows`);
-
     for (let i = 0; i < rows.length; i++) {
-        const descriptionInput = rows[i].querySelector('input[name="description[]"]');
-        const quantityInput = rows[i].querySelector('input[name="quantity[]"]');
-        const unitSelect = rows[i].querySelector('select[name="unit[]"]');
-        const costInput = rows[i].querySelector('input[name="cost[]"]');
-        const markupRateInput = rows[i].querySelector('input[name="markupRate[]"]');
+        const description = rows[i].querySelector('input[name="description[]"]').value.trim();
+        const quantity = parseFloat(rows[i].querySelector('input[name="quantity[]"]').value) || 0;
+        const unit = rows[i].querySelector('select[name="unit[]"]').value;
+        const cost = parseFloat(rows[i].querySelector('input[name="cost[]"]').value) || 0;
+        const markupRate = parseFloat(rows[i].querySelector('input[name="markupRate[]"]').value) || 0;
 
-        if (!descriptionInput || !quantityInput || !unitSelect || !costInput || !markupRateInput) {
-            console.error("Row", i, "has missing inputs");
-            continue;
-        }
-
-        const description = descriptionInput.value.trim();
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const unit = unitSelect.value;
-        const cost = parseFloat(costInput.value) || 0;
-        const markupRate = parseFloat(markupRateInput.value) || 0;
-
-        console.log(`Row ${i}: description=${description}, quantity=${quantity}, unit=${unit}, cost=${cost}, markupRate=${markupRate}`);
-
-        // 明細金額: 数量 × 原価 × 掛け率
         const itemAmount = quantity * cost * markupRate;
-        // 原価合計: 数量 × 原価
         const itemCostSum = quantity * cost;
 
-        console.log(`Row ${i}: itemAmount=${itemAmount}, itemCostSum=${itemCostSum}`);
-
-        currentItems.push({
-            no: i + 1,
-            description,
-            quantity,
-            unit,
-            cost,
-            markupRate,
-            amount: itemAmount
-        });
-
+        currentItems.push({ no: i + 1, description, quantity, unit, cost, markupRate, amount: itemAmount });
         totalCostSum += itemCostSum;
         estimateSubtotal += itemAmount;
     }
-
-    console.log(`Total cost sum: ${totalCostSum}, Estimate subtotal: ${estimateSubtotal}`);
-    
     currentTotalCost = totalCostSum;
 
     const tax = estimateSubtotal * 0.1;
     const total = estimateSubtotal + tax;
 
-    // 粗利と粗利率の計算
-    const grossProfit = estimateSubtotal - totalCostSum;
     let grossMarginPercent = 0;
-
-    console.log(`Gross profit: ${grossProfit}`);
-
-    if (estimateSubtotal > 0) {
-        grossMarginPercent = (grossProfit / estimateSubtotal) * 100;
-    } else if (totalCostSum === 0) {
+    if (estimateSubtotal !== 0) {
+        grossMarginPercent = ((estimateSubtotal - currentTotalCost) / Math.abs(estimateSubtotal)) * 100;
+    } else if (currentTotalCost === 0) {
         grossMarginPercent = 0;
     } else {
-        grossMarginPercent = -100;
+        grossMarginPercent = NaN;
     }
 
-    console.log(`Calculated gross margin: ${grossMarginPercent}%`);
+    document.getElementById('resultSubtotal').textContent = formatCurrency(Math.round(estimateSubtotal));
+    document.getElementById('resultTotal').textContent = formatCurrency(Math.round(total));
+    document.getElementById('resultTotalCost').textContent = formatCurrency(Math.round(currentTotalCost));
 
-    // 結果の表示
-    const resultSubtotalElement = document.getElementById('resultSubtotal');
-    const resultTotalElement = document.getElementById('resultTotal');
-    const resultTotalCostElement = document.getElementById('resultTotalCost');
     const grossMarginElement = document.getElementById('resultGrossMarginPercent');
-
-    if (resultSubtotalElement) resultSubtotalElement.textContent = formatCurrency(Math.round(estimateSubtotal));
-    if (resultTotalElement) resultTotalElement.textContent = formatCurrency(Math.round(total));
-    if (resultTotalCostElement) resultTotalCostElement.textContent = formatCurrency(Math.round(totalCostSum));
-
-    if (grossMarginElement) {
-        if (isNaN(grossMarginPercent)) {
-            grossMarginElement.textContent = '---';
-        } else if (!isFinite(grossMarginPercent)) {
-            grossMarginElement.textContent = (grossMarginPercent > 0 ? '+' : '-') + '∞ %';
-        } else {
-            grossMarginElement.textContent = `${grossMarginPercent.toFixed(1)}%`;
-        }
+    if (isNaN(grossMarginPercent)) {
+        grossMarginElement.textContent = '---';
+    } else if (!isFinite(grossMarginPercent)) {
+        grossMarginElement.textContent = (grossMarginPercent > 0 ? '+' : '-') + '∞ %';
+    } else {
+        grossMarginElement.textContent = `${grossMarginPercent.toFixed(1)}%`;
     }
 
-    console.log(`Final results - Subtotal: ${formatCurrency(Math.round(estimateSubtotal))}, Total: ${formatCurrency(Math.round(total))}, Cost: ${formatCurrency(Math.round(totalCostSum))}, Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`);
+    debugLog(`Estimate calculated. Raw Total Cost: ${currentTotalCost}, Raw Estimate Subtotal: ${estimateSubtotal}, Gross Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`, 'info');
 
-    if (typeof debugLog === 'function') {
-        debugLog(`Estimate calculated. Raw Total Cost: ${totalCostSum}, Raw Estimate Subtotal: ${estimateSubtotal}, Gross Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`, 'info');
-    }
-
-    if (estimateResult) {
-        estimateResult.classList.remove('hidden');
-        estimateResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-    
-    if (calculateBtn) {
-        calculateBtn.dataset.calculated = 'true';
-    }
+    estimateResult.classList.remove('hidden');
+    estimateResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    calculateBtn.dataset.calculated = 'true';
 }
 
 function validateForm() {
@@ -211,7 +153,7 @@ function formatDateJP(dateString) {
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         const day = date.getDate();
-        return `${year}年${month}月${day}日`;return `${year}年${month}月${day}日`;
+        return `${year}年${month}月${day}日`;
     } catch (e) {
         console.error("Error formatting date:", dateString, e);
         return '';
