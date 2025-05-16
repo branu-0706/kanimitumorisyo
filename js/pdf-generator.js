@@ -71,7 +71,7 @@ function generateEstimateHTML() {
                     <table style="width: 100%;"><tr><td style="width: 15%;">件名</td><td style="width: 85%;">${project}</td></tr></table>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-                     <div style="flex: 1;"></div>
+                    <div style="flex: 1;"></div>
                     <div style="width: 220px;">
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr style="border-bottom: 1px solid #eee;"><td style="padding: 3px 0;">見積日</td><td style="padding: 3px 0;">${formattedDate}</td></tr>
