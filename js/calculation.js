@@ -2,7 +2,7 @@
 
 // --- 計算関連の関数を window オブジェクトに追加 ---
 window.updateAmounts = function() {
-    console.log("updateAmounts called"); // デバッグログ追加
+    console.log("updateAmounts called"); // デバッグログ追加console.log("updateAmounts called"); // デバッグログ追加
     if (!window.itemTableBody) {
         console.error("itemTableBody element not found");
         return;
