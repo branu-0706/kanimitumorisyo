@@ -125,7 +125,7 @@ function setupLoadingTimeout() {
 
     pdfGenerationTimeout = setTimeout(() => {
         clearTimeout(actionTimer);
-        if (loadingSpinner.style.display === 'flex' && !pdfGenerationCancelled) {if（loadingspinner.style.display === 'flex' &&！pdfgenerationCancelled）{
+        if (loadingSpinner.style.display === 'flex' && !pdfGenerationCancelled) {
             hideLoadingSpinner();
             alert(`処理がタイムアウトしました (${pdfTimeoutValue}秒)。\nネットワーク接続を確認するか、設定でタイムアウト時間を延長してください。\n問題が解決しない場合は、ブラウザの印刷機能をお試しください。`);
             debugLog('Processing timed out.', 'error');
