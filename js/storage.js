@@ -1,5 +1,10 @@
 'use strict';
 
+// --- 定数定義 ---
+const DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）
+
+'use strict';
+
 // --- ストレージ関連の定数 ---
 const DEBUG_KEY = 'estimateAppDebugMode';
 const TIMEOUT_KEY = 'estimateAppPdfTimeout';
