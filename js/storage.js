@@ -151,7 +151,7 @@ function handleImageUpload(inputElement, previewElement, removeBtn) {
         alert('ファイルの読み込みに失敗しました。');
         inputElement.value = '';
     }
-    reader.readAsDataURL(file);reader.readasdataurl（file）;
+    reader.readAsDataURL(file);
 }
 
 function removeImage(previewElement, removeBtn, inputElement, infoKey) {
