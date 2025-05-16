@@ -2,16 +2,24 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', function() {
-    // --- 定数定義 ---
-    // storage.js で定義済みのため、再定義は不要
-    // DEBUG_KEY, TIMEOUT_KEY, COMPANY_INFO_KEY は storage.js 側で定義
+    // --- デバッグログ関数（必要な場合に追加） ---
+    if (typeof window.debugLog !== 'function') {
+        window.debugLog = function(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            console.log(`[${timestamp}][${type.toUpperCase()}] ${message}`);
 
-    // --- グローバル変数 ---
-    window.pdfGenerationTimeout = null;
-    window.pdfGenerationCancelled = false; // 重複定義を削除
-    window.currentTotalCost = 0; // 原価合計
-    window.currentItems = []; // 明細データ
-    
+            if (window.isDebugMode && window.debugPanel && window.debugPanel.style.display !== 'none') {
+                const logElement = document.createElement('div');
+                logElement.className = `debug-log debug-${type}`;
+                logElement.textContent = `[${timestamp}] ${message}`;
+                window.debugLogs.insertBefore(logElement, window.debugLogs.firstChild);
+                while (window.debugLogs.children.length > 101) {
+                    window.debugLogs.removeChild(window.debugLogs.lastChild);
+                }
+            }
+        };
+    }
+
     // --- 要素の取得 ---
     window.estimateForm = document.getElementById('estimateForm');
     window.estimateResult = document.getElementById('estimateResult');
@@ -40,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.pdfContent = document.getElementById('pdfContent');
     window.pdfEstimateSheet = document.getElementById('pdfEstimateSheet');
     window.loadingSpinner = document.getElementById('loadingSpinner');
-    window.loadingSpinnerText = loadingSpinner.querySelector('.spinner-text');
+    window.loadingSpinnerText = window.loadingSpinner ? window.loadingSpinner.querySelector('.spinner-text') : null;
     window.spinnerActions = document.getElementById('spinnerActions');
     window.cancelPdfBtn = document.getElementById('cancelPdfBtn');
     window.alternativePdfBtn = document.getElementById('alternativePdfBtn');
@@ -51,34 +59,19 @@ document.addEventListener('DOMContentLoaded', function() {
     window.storageWarning = document.getElementById('storageWarning');
     window.clearStorageBtn = document.getElementById('clearStorageBtn');
 
-    // --- デバッグログ関数（必要な場合に追加） ---
-    if (typeof debugLog !== 'function') {
-        window.debugLog = function(message, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
-            console.log(`[${timestamp}][${type.toUpperCase()}] ${message}`);
-
-            if (window.isDebugMode && window.debugPanel && window.debugPanel.style.display !== 'none') {
-                const logElement = document.createElement('div');
-                logElement.className = `debug-log debug-${type}`;
-                logElement.textContent = `[${timestamp}] ${message}`;
-                window.debugLogs.insertBefore(logElement, window.debugLogs.firstChild);
-                while (window.debugLogs.children.length > 101) {
-                    window.debugLogs.removeChild(window.debugLogs.lastChild);
-                }
-            }
-        };
-    }
-
     // --- 初期化処理 ---
     initialize();
 
     function initialize() {
         // Copyright年の設定
-        document.getElementById('copyrightYear').textContent = new Date().getFullYear();
+        const copyrightYearElement = document.getElementById('copyrightYear');
+        if (copyrightYearElement) {
+            copyrightYearElement.textContent = new Date().getFullYear();
+        }
 
         // LocalStorageが使用可能かチェック
-        if (typeof checkStorage === 'function') {
-            checkStorage();
+        if (typeof window.checkStorage === 'function') {
+            window.checkStorage();
         } else {
             console.error("checkStorage function is not defined. Check if storage.js is loaded properly.");
             window.storageAvailable = false;
@@ -86,12 +79,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // 設定をロード
-        if (typeof loadSettings === 'function') {
-            loadSettings();
+        if (typeof window.loadSettings === 'function') {
+            window.loadSettings();
         } else {
             console.error("loadSettings function is not defined. Check if storage.js is loaded properly.");
             window.isDebugMode = false;
-            window.pdfTimeoutValue = DEFAULT_TIMEOUT || 15;
+            window.pdfTimeoutValue = window.DEFAULT_TIMEOUT || 15;
             window.companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
         }
 
@@ -109,8 +102,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // 会社情報をフォームに反映
-        if (typeof loadCompanyInfo === 'function') {
-            loadCompanyInfo();
+        if (typeof window.loadCompanyInfo === 'function') {
+            window.loadCompanyInfo();
         } else {
             console.error("loadCompanyInfo function is not defined. Check if storage.js is loaded properly.");
         }
@@ -139,8 +132,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         console.log('Application initialized');
-        if (typeof debugLog === 'function') {
-            debugLog('Application initialized', 'info');
+        if (typeof window.debugLog === 'function') {
+            window.debugLog('Application initialized', 'info');
         }
     }
 
@@ -235,8 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.companySettingsForm) {
             window.companySettingsForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                if (typeof saveCompanyInfo === 'function') {
-                    saveCompanyInfo();
+                if (typeof window.saveCompanyInfo === 'function') {
+                    window.saveCompanyInfo();
                 } else {
                     console.error("saveCompanyInfo function is not defined. Check if storage.js is loaded properly.");
                 }
@@ -246,8 +239,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // 画像アップロード
         if (window.companyLogoInput && window.companyLogoPreview && window.removeLogoBtn) {
             window.companyLogoInput.addEventListener('change', () => {
-                if (typeof handleImageUpload === 'function') {
-                    handleImageUpload(window.companyLogoInput, window.companyLogoPreview, window.removeLogoBtn);
+                if (typeof window.handleImageUpload === 'function') {
+                    window.handleImageUpload(window.companyLogoInput, window.companyLogoPreview, window.removeLogoBtn);
                 } else {
                     console.error("handleImageUpload function is not defined. Check if storage.js is loaded properly.");
                 }
@@ -256,8 +249,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (window.companyStampInput && window.companyStampPreview && window.removeStampBtn) {
             window.companyStampInput.addEventListener('change', () => {
-                if (typeof handleImageUpload === 'function') {
-                    handleImageUpload(window.companyStampInput, window.companyStampPreview, window.removeStampBtn);
+                if (typeof window.handleImageUpload === 'function') {
+                    window.handleImageUpload(window.companyStampInput, window.companyStampPreview, window.removeStampBtn);
                 } else {
                     console.error("handleImageUpload function is not defined. Check if storage.js is loaded properly.");
                 }
@@ -267,8 +260,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // 画像削除
         if (window.removeLogoBtn && window.companyLogoPreview && window.companyLogoInput) {
             window.removeLogoBtn.addEventListener('click', () => {
-                if (typeof removeImage === 'function') {
-                    removeImage(window.companyLogoPreview, window.removeLogoBtn, window.companyLogoInput, 'logo');
+                if (typeof window.removeImage === 'function') {
+                    window.removeImage(window.companyLogoPreview, window.removeLogoBtn, window.companyLogoInput, 'logo');
                 } else {
                     console.error("removeImage function is not defined. Check if storage.js is loaded properly.");
                 }
@@ -277,8 +270,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (window.removeStampBtn && window.companyStampPreview && window.companyStampInput) {
             window.removeStampBtn.addEventListener('click', () => {
-                if (typeof removeImage === 'function') {
-                    removeImage(window.companyStampPreview, window.removeStampBtn, window.companyStampInput, 'stamp');
+                if (typeof window.removeImage === 'function') {
+                    window.removeImage(window.companyStampPreview, window.removeStampBtn, window.companyStampInput, 'stamp');
                 } else {
                     console.error("removeImage function is not defined. Check if storage.js is loaded properly.");
                 }
@@ -290,11 +283,11 @@ document.addEventListener('DOMContentLoaded', function() {
             window.debugModeCheckbox.addEventListener('change', function() {
                 window.isDebugMode = this.checked;
                 window.debugPanel.style.display = window.isDebugMode ? 'block' : 'none';
-                if (window.storageAvailable && typeof DEBUG_KEY !== 'undefined') {
-                    localStorage.setItem(DEBUG_KEY, window.isDebugMode);
+                if (window.storageAvailable && typeof window.DEBUG_KEY !== 'undefined') {
+                    localStorage.setItem(window.DEBUG_KEY, window.isDebugMode);
                 }
-                if (window.isDebugMode && typeof debugLog === 'function') {
-                    debugLog('Debug mode enabled.', 'warn');
+                if (window.isDebugMode && typeof window.debugLog === 'function') {
+                    window.debugLog('Debug mode enabled.', 'warn');
                 } else {
                     console.log('[INFO] Debug mode disabled.');
                 }
@@ -306,15 +299,15 @@ document.addEventListener('DOMContentLoaded', function() {
             window.pdfTimeoutInput.addEventListener('change', function() {
                 let value = parseInt(this.value, 10);
                 if (isNaN(value) || value < 5 || value > 120) {
-                    value = DEFAULT_TIMEOUT || 15;
+                    value = window.DEFAULT_TIMEOUT || 15;
                     this.value = value;
                 }
                 window.pdfTimeoutValue = value;
-                if (window.storageAvailable && typeof TIMEOUT_KEY !== 'undefined') {
-                    localStorage.setItem(TIMEOUT_KEY, window.pdfTimeoutValue);
+                if (window.storageAvailable && typeof window.TIMEOUT_KEY !== 'undefined') {
+                    localStorage.setItem(window.TIMEOUT_KEY, window.pdfTimeoutValue);
                 }
-                if (typeof debugLog === 'function') {
-                    debugLog(`PDF timeout set to ${window.pdfTimeoutValue} seconds.`, 'info');
+                if (typeof window.debugLog === 'function') {
+                    window.debugLog(`PDF timeout set to ${window.pdfTimeoutValue} seconds.`, 'info');
                 } else {
                     console.log(`PDF timeout set to ${window.pdfTimeoutValue} seconds.`);
                 }
@@ -324,8 +317,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // 設定リセット
         if (window.clearStorageBtn) {
             window.clearStorageBtn.addEventListener('click', () => {
-                if (typeof clearAllSettings === 'function') {
-                    clearAllSettings();
+                if (typeof window.clearAllSettings === 'function') {
+                    window.clearAllSettings();
                 } else {
                     console.error("clearAllSettings function is not defined. Check if storage.js is loaded properly.");
                 }
@@ -348,8 +341,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         console.error("hideLoadingSpinner function is not defined. Check if ui.js is loaded properly.");
                     }
-                    if (typeof debugLog === 'function') {
-                        debugLog('PDF generation cancelled by user.', 'warn');
+                    if (typeof window.debugLog === 'function') {
+                        window.debugLog('PDF generation cancelled by user.', 'warn');
                     } else {
                         console.log('PDF generation cancelled by user.');
                     }
@@ -363,8 +356,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (typeof hideLoadingSpinner === 'function' && typeof printEstimate === 'function') {
                     hideLoadingSpinner();
                     printEstimate();
-                    if (typeof debugLog === 'function') {
-                        debugLog('Alternative action (print) triggered.', 'info');
+                    if (typeof window.debugLog === 'function') {
+                        window.debugLog('Alternative action (print) triggered.', 'info');
                     } else {
                         console.log('Alternative action (print) triggered.');
                     }
