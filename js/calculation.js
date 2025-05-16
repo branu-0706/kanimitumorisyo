@@ -1,14 +1,21 @@
 'use strict';
 
-// --- 計算関連の関数を window オブジェクトに追加 ---
+console.log('calculation.js loading...');
+
+// --- 計算関連の関数 ---
 window.updateAmounts = function() {
-    console.log("updateAmounts called"); // デバッグログ追加console.log("updateAmounts called"); // デバッグログ追加
-    if (!window.itemTableBody) {
+    console.log("updateAmounts called"); // デバッグログ追加
+    const itemTableBody = document.getElementById('itemTableBody');
+    const subtotalElement = document.getElementById('subtotal');
+    const taxElement = document.getElementById('tax');
+    const totalElement = document.getElementById('total');
+    
+    if (!itemTableBody) {
         console.error("itemTableBody element not found");
         return;
     }
     
-    const rows = window.itemTableBody.rows;
+    const rows = itemTableBody.rows;
     let subtotal = 0;
 
     for (let i = 0; i < rows.length; i++) {
@@ -39,21 +46,23 @@ window.updateAmounts = function() {
 
     console.log(`Subtotal: ${subtotal}, Tax: ${tax}, Total: ${total}`);
 
-    if (window.subtotalElement) window.subtotalElement.textContent = window.formatCurrency(Math.round(subtotal));
-    if (window.taxElement) window.taxElement.textContent = window.formatCurrency(Math.round(tax));
-    if (window.totalElement) window.totalElement.textContent = window.formatCurrency(Math.round(total));
+    if (subtotalElement) subtotalElement.textContent = window.formatCurrency(Math.round(subtotal));
+    if (taxElement) taxElement.textContent = window.formatCurrency(Math.round(tax));
+    if (totalElement) totalElement.textContent = window.formatCurrency(Math.round(total));
 };
 
 window.calculateEstimate = function() {
     console.log("calculateEstimate called");
     
     window.currentItems = [];
-    if (!window.itemTableBody) {
+    const itemTableBody = document.getElementById('itemTableBody');
+    
+    if (!itemTableBody) {
         console.error("itemTableBody element not found");
         return;
     }
     
-    const rows = window.itemTableBody.rows;
+    const rows = itemTableBody.rows;
     let totalCostSum = 0;
     let estimateSubtotal = 0;
 
@@ -128,6 +137,8 @@ window.calculateEstimate = function() {
     const resultTotalElement = document.getElementById('resultTotal');
     const resultTotalCostElement = document.getElementById('resultTotalCost');
     const grossMarginElement = document.getElementById('resultGrossMarginPercent');
+    const estimateResult = document.getElementById('estimateResult');
+    const calculateBtn = document.getElementById('calculateBtn');
 
     if (resultSubtotalElement) resultSubtotalElement.textContent = window.formatCurrency(Math.round(estimateSubtotal));
     if (resultTotalElement) resultTotalElement.textContent = window.formatCurrency(Math.round(total));
@@ -149,29 +160,46 @@ window.calculateEstimate = function() {
         window.debugLog(`Estimate calculated. Raw Total Cost: ${totalCostSum}, Raw Estimate Subtotal: ${estimateSubtotal}, Gross Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`, 'info');
     }
 
-    if (window.estimateResult) {
-        window.estimateResult.classList.remove('hidden');
-        window.estimateResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (estimateResult) {
+        estimateResult.classList.remove('hidden');
+        estimateResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     
-    if (window.calculateBtn) {
-        window.calculateBtn.dataset.calculated = 'true';
+    if (calculateBtn) {
+        calculateBtn.dataset.calculated = 'true';
     }
 };
 
 window.validateForm = function() {
-    const client = document.getElementById('client').value.trim();
-    const project = document.getElementById('project').value.trim();
-    if (!client) { alert('見積提出先を入力してください'); document.getElementById('client').focus(); return false; }
-    if (!project) { alert('件名を入力してください'); document.getElementById('project').focus(); return false; }
-
-    if (!window.itemTableBody) {
-        console.error("itemTableBody element not found");
+    const client = document.getElementById('client');
+    const project = document.getElementById('project');
+    const itemTableBody = document.getElementById('itemTableBody');
+    
+    if (!client || !project || !itemTableBody) {
+        console.error("Required form elements not found");
         return false;
     }
     
-    const rows = window.itemTableBody.rows;
-    if (rows.length === 0) { alert('明細行を1行以上入力してください'); return false;}
+    const clientValue = client.value.trim();
+    const projectValue = project.value.trim();
+    
+    if (!clientValue) { 
+        alert('見積提出先を入力してください'); 
+        client.focus(); 
+        return false; 
+    }
+    
+    if (!projectValue) { 
+        alert('件名を入力してください'); 
+        project.focus(); 
+        return false; 
+    }
+
+    const rows = itemTableBody.rows;
+    if (rows.length === 0) { 
+        alert('明細行を1行以上入力してください'); 
+        return false;
+    }
 
     for (let i = 0; i < rows.length; i++) {
         const rowNum = i + 1;
@@ -180,29 +208,51 @@ window.validateForm = function() {
         const costInput = rows[i].querySelector('input[name="cost[]"]');
         const markupRateInput = rows[i].querySelector('input[name="markupRate[]"]');
 
+        if (!descriptionInput || !quantityInput || !costInput || !markupRateInput) {
+            console.error("Row", i, "has missing inputs");
+            continue;
+        }
+
         const description = descriptionInput.value.trim();
         const quantity = quantityInput.value;
         const cost = costInput.value;
         const markupRate = markupRateInput.value;
 
-        if (!description) { alert(`${rowNum}行目の摘要を入力してください`); descriptionInput.focus(); return false; }
+        if (!description) { 
+            alert(`${rowNum}行目の摘要を入力してください`); 
+            descriptionInput.focus(); 
+            return false; 
+        }
+        
         if (quantity === '' || isNaN(parseFloat(quantity)) || parseFloat(quantity) <= 0) {
-            alert(`${rowNum}行目の数量を正しく入力してください (0より大きい数値)`); quantityInput.focus(); return false;
+            alert(`${rowNum}行目の数量を正しく入力してください (0より大きい数値)`); 
+            quantityInput.focus(); 
+            return false;
         }
+        
         if (cost === '' || isNaN(parseFloat(cost))) {
-            alert(`${rowNum}行目の原価を数値で入力してください`); costInput.focus(); return false;
+            alert(`${rowNum}行目の原価を数値で入力してください`); 
+            costInput.focus(); 
+            return false;
         }
+        
         if (markupRate === '' || isNaN(parseFloat(markupRate))) {
-            alert(`${rowNum}行目の掛け率を数値で入力してください`); markupRateInput.focus(); return false;
+            alert(`${rowNum}行目の掛け率を数値で入力してください`); 
+            markupRateInput.focus(); 
+            return false;
         }
+        
         if (parseFloat(markupRate) <= 0 && cost !== '0' && parseFloat(cost) !== 0) {
             if (!confirm(`${rowNum}行目の掛け率が0以下です。この明細の金額が0またはマイナスになりますが、よろしいですか？`)) {
-                markupRateInput.focus(); return false;
+                markupRateInput.focus(); 
+                return false;
             }
         }
+        
         if (parseFloat(cost) < 0) {
             if (!confirm(`${rowNum}行目の原価がマイナスです。よろしいですか？`)) {
-                costInput.focus(); return false;
+                costInput.focus(); 
+                return false;
             }
         }
     }
@@ -241,3 +291,5 @@ window.generateEstimateNumber = function() {
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     return `Q-${year}${month}${day}-${random}`;
 };
+
+console.log('calculation.js loaded successfully!');
