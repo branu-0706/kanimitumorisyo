@@ -62,18 +62,22 @@ function calculateEstimate() {
     const tax = estimateSubtotal * 0.1;
     const total = estimateSubtotal + tax;
 
+    // 粗利率の計算部分を修正
     let grossMarginPercent = 0;
-    if (estimateSubtotal !== 0) {
-        grossMarginPercent = ((estimateSubtotal - currentTotalCost) / Math.abs(estimateSubtotal)) * 100;
-    } else if (currentTotalCost === 0) {
+    if (estimateSubtotal > 0) {
+        // 粗利 = 売上 - 原価
+        const grossProfit = estimateSubtotal - totalCostSum;
+        // 粗利率 = 粗利 ÷ 売上 × 100
+        grossMarginPercent = (grossProfit / estimateSubtotal) * 100;
+    } else if (totalCostSum === 0) {
         grossMarginPercent = 0;
     } else {
-        grossMarginPercent = NaN;
+        grossMarginPercent = -100; // 売上が0で原価がある場合は-100%とする
     }
 
     document.getElementById('resultSubtotal').textContent = formatCurrency(Math.round(estimateSubtotal));
     document.getElementById('resultTotal').textContent = formatCurrency(Math.round(total));
-    document.getElementById('resultTotalCost').textContent = formatCurrency(Math.round(currentTotalCost));
+    document.getElementById('resultTotalCost').textContent = formatCurrency(Math.round(totalCostSum));
 
     const grossMarginElement = document.getElementById('resultGrossMarginPercent');
     if (isNaN(grossMarginPercent)) {
@@ -84,7 +88,10 @@ function calculateEstimate() {
         grossMarginElement.textContent = `${grossMarginPercent.toFixed(1)}%`;
     }
 
-    debugLog(`Estimate calculated. Raw Total Cost: ${currentTotalCost}, Raw Estimate Subtotal: ${estimateSubtotal}, Gross Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`, 'info');
+    console.log(`Estimate calculated. Raw Total Cost: ${totalCostSum}, Raw Estimate Subtotal: ${estimateSubtotal}, Gross Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`);
+    if (typeof debugLog === 'function') {
+        debugLog(`Estimate calculated. Raw Total Cost: ${totalCostSum}, Raw Estimate Subtotal: ${estimateSubtotal}, Gross Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`, 'info');
+    }
 
     estimateResult.classList.remove('hidden');
     estimateResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
