@@ -3,6 +3,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     // --- 定数定義 ---
     const DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）
+    const DEBUG_KEY = 'estimateAppDebugMode';
+    const TIMEOUT_KEY = 'estimateAppPdfTimeout';
+    const COMPANY_INFO_KEY = 'estimateAppCompanyInfo';
 
     // --- グローバル変数 ---
     window.pdfGenerationTimeout = null;
@@ -55,6 +58,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- 初期化処理 ---
     initialize();
+
+    // --- ストレージ関連の関数（storage.jsから移動） ---
+    function checkStorage() {
+        try {
+            localStorage.setItem('__test_storage__', 'test');
+            localStorage.removeItem('__test_storage__');
+            storageAvailable = true;
+            debugLog('LocalStorage is available.', 'info');
+        } catch (e) {
+            storageAvailable = false;
+            if (storageWarning) storageWarning.classList.remove('hidden');
+            console.warn('LocalStorage is not available.', e);
+            debugLog('LocalStorage is not available.', 'warn');
+        }
+    }
 
     function initialize() {
         // Copyright年の設定
@@ -173,7 +191,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // 明細行の金額計算イベント
-        itemTableBody.querySelectorAll('input[name="quantity[]"], input[name="cost[]"], input[name="markupRate[]"]')
-            .forEach(input => input.addEventListener('input', updateAmounts));
+        setupItemRowListeners();
+    }
+    
+    // 明細行の入力イベントリスナー設定（追加）
+    function setupItemRowListeners() {
+        console.log("Setting up item row listeners");
+        const inputs = document.querySelectorAll('input[name="quantity[]"], input[name="cost[]"], input[name="markupRate[]"]');
+        console.log("Found", inputs.length, "inputs to listen to");
+        
+        inputs.forEach(input => {
+            input.addEventListener('input', function() {
+                console.log("Input event triggered on", this.name);
+                updateAmounts();
+            });
+            input.addEventListener('change', function() {
+                console.log("Change event triggered on", this.name);
+                updateAmounts();
+            });
+        });
     }
 });
