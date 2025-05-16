@@ -1,246 +1,163 @@
 'use strict';
 
-console.log('storage.js loading...');
+// --- 定数定義 ---
+const DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）
+const DEBUG_KEY = 'estimateAppDebugMode';
+const TIMEOUT_KEY = 'estimateAppPdfTimeout';
+const COMPANY_INFO_KEY = 'estimateAppCompanyInfo';
 
-// --- グローバル定数 ---
-window.DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）
-window.DEBUG_KEY = 'estimateAppDebugMode';
-window.TIMEOUT_KEY = 'estimateAppPdfTimeout';
-window.COMPANY_INFO_KEY = 'estimateAppCompanyInfo';
-
-// --- グローバル変数 ---
-window.pdfGenerationTimeout = null;
-window.pdfTimeoutValue = window.DEFAULT_TIMEOUT;
-window.pdfGenerationCancelled = false;
-window.currentTotalCost = 0; // 原価合計
-window.currentItems = []; // 明細データ
-window.companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
-window.storageAvailable = false;
-window.isDebugMode = false;
-
-// --- ストレージ関数 ---
-window.checkStorage = function() {
+// --- ストレージ関連の関数 ---
+function checkStorage() {
     try {
         localStorage.setItem('__test_storage__', 'test');
         localStorage.removeItem('__test_storage__');
-        window.storageAvailable = true;
-        console.log('[INFO] LocalStorage is available.');
+        storageAvailable = true;
+        debugLog('LocalStorage is available.', 'info');
     } catch (e) {
-        window.storageAvailable = false;
-        const storageWarning = document.getElementById('storageWarning');
+        storageAvailable = false;
         if (storageWarning) storageWarning.classList.remove('hidden');
         console.warn('LocalStorage is not available.', e);
+        debugLog('LocalStorage is not available.', 'warn');
     }
-};
+}
 
-// --- 設定関数 ---
-window.loadSettings = function() {
-    if (!window.storageAvailable) return;
-
-    // デバッグモードの設定をロード
-    const debugMode = localStorage.getItem(window.DEBUG_KEY);
-    window.isDebugMode = debugMode === 'true';
-
-    // PDFタイムアウト値をロード
-    const timeout = localStorage.getItem(window.TIMEOUT_KEY);
-    if (timeout) {
-        const value = parseInt(timeout, 10);
-        window.pdfTimeoutValue = (!isNaN(value) && value >= 5 && value <= 120) ? value : window.DEFAULT_TIMEOUT;
+function loadSettings() {
+    if (!storageAvailable) {
+        isDebugMode = false;
+        pdfTimeoutValue = DEFAULT_TIMEOUT;
+        companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
+        return;
     }
-    console.log(`[INFO] Settings loaded - Debug Mode: ${window.isDebugMode}, PDF Timeout: ${window.pdfTimeoutValue}s`);
-};
 
-// --- 会社情報関数 ---
-window.loadCompanyInfo = function() {
-    if (!window.storageAvailable) return;
-
-    const savedInfo = localStorage.getItem(window.COMPANY_INFO_KEY);
-    if (savedInfo) {
+    isDebugMode = localStorage.getItem(DEBUG_KEY) === 'true';
+    const storedTimeout = localStorage.getItem(TIMEOUT_KEY);
+    pdfTimeoutValue = storedTimeout ? parseInt(storedTimeout, 10) : DEFAULT_TIMEOUT;
+    if (isNaN(pdfTimeoutValue) || pdfTimeoutValue < 5 || pdfTimeoutValue > 120) {
+        pdfTimeoutValue = DEFAULT_TIMEOUT;
+    }
+    const storedInfo = localStorage.getItem(COMPANY_INFO_KEY);
+    if (storedInfo) {
         try {
-            const info = JSON.parse(savedInfo);
-            window.companyInfo = Object.assign({}, window.companyInfo, info);
-            
-            // フォームに値をセット
-            const companySettingsForm = document.getElementById('companySettingsForm');
-            if (companySettingsForm) {
-                const nameInput = companySettingsForm.querySelector('#companyName');
-                const postalInput = companySettingsForm.querySelector('#companyPostal');
-                const addressInput = companySettingsForm.querySelector('#companyAddress');
-                const phoneInput = companySettingsForm.querySelector('#companyPhone');
-                const faxInput = companySettingsForm.querySelector('#companyFax');
-                
-                if (nameInput) nameInput.value = window.companyInfo.name || '';
-                if (postalInput) postalInput.value = window.companyInfo.postal || '';
-                if (addressInput) addressInput.value = window.companyInfo.address || '';
-                if (phoneInput) phoneInput.value = window.companyInfo.phone || '';
-                if (faxInput) faxInput.value = window.companyInfo.fax || '';
-                
-                // ロゴとスタンプの画像を設定
-                const companyLogoPreview = document.getElementById('companyLogoPreview');
-                const removeLogoBtn = document.getElementById('removeLogoBtn');
-                const companyStampPreview = document.getElementById('companyStampPreview');
-                const removeStampBtn = document.getElementById('removeStampBtn');
-                
-                if (window.companyInfo.logo && companyLogoPreview) {
-                    companyLogoPreview.src = window.companyInfo.logo;
-                    companyLogoPreview.style.display = 'block';
-                    if (removeLogoBtn) removeLogoBtn.style.display = 'inline-block';
-                }
-                
-                if (window.companyInfo.stamp && companyStampPreview) {
-                    companyStampPreview.src = window.companyInfo.stamp;
-                    companyStampPreview.style.display = 'block';
-                    if (removeStampBtn) removeStampBtn.style.display = 'inline-block';
+            companyInfo = JSON.parse(storedInfo);
+            for (const key in companyInfo) {
+                if (companyInfo[key] == null) {
+                    companyInfo[key] = '';
                 }
             }
-            
-            console.log('[INFO] Company information loaded.');
         } catch (e) {
-            console.error('Failed to parse company information.', e);
+            console.error('Failed to parse company info from localStorage', e);
+            companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
         }
+    } else {
+        companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
     }
-};
+    debugLog('Settings loaded from localStorage.', 'info');
+}
 
-window.saveCompanyInfo = function() {
-    if (!window.storageAvailable) return;
-    
-    const companySettingsForm = document.getElementById('companySettingsForm');
-    if (!companySettingsForm) return;
-    
-    const nameInput = companySettingsForm.querySelector('#companyName');
-    const postalInput = companySettingsForm.querySelector('#companyPostal');
-    const addressInput = companySettingsForm.querySelector('#companyAddress');
-    const phoneInput = companySettingsForm.querySelector('#companyPhone');
-    const faxInput = companySettingsForm.querySelector('#companyFax');
-    
-    if (nameInput) window.companyInfo.name = nameInput.value.trim();
-    if (postalInput) window.companyInfo.postal = postalInput.value.trim();
-    if (addressInput) window.companyInfo.address = addressInput.value.trim();
-    if (phoneInput) window.companyInfo.phone = phoneInput.value.trim();
-    if (faxInput) window.companyInfo.fax = faxInput.value.trim();
-    
-    // ローカルストレージに保存
-    localStorage.setItem(window.COMPANY_INFO_KEY, JSON.stringify(window.companyInfo));
-    console.log('[INFO] Company information saved.');
-    
-    // 成功メッセージを表示
-    alert('会社情報を保存しました。');
-};
+function saveCompanyInfo() {
+    companyInfo.name = document.getElementById('companyName').value.trim();
+    companyInfo.postal = document.getElementById('companyPostal').value.trim();
+    companyInfo.address = document.getElementById('companyAddress').value.trim();
+    companyInfo.phone = document.getElementById('companyPhone').value.trim();
+    companyInfo.fax = document.getElementById('companyFax').value.trim();
+    companyInfo.logo = companyLogoPreview.classList.contains('hidden') ? '' : companyLogoPreview.src;
+    companyInfo.stamp = companyStampPreview.classList.contains('hidden') ? '' : companyStampPreview.src;
 
-window.handleImageUpload = function(input, preview, removeBtn) {
-    if (!input || !input.files || !input.files[0]) return;
-    
-    const file = input.files[0];
+    if (storageAvailable) {
+        try {
+            localStorage.setItem(COMPANY_INFO_KEY, JSON.stringify(companyInfo));
+            alert('会社情報を保存しました。');
+            debugLog('Company information saved.', 'info');
+        } catch (e) {
+            console.error('Failed to save company info to localStorage', e);
+            alert('会社情報の保存に失敗しました。ブラウザのストレージ容量を確認してください。');
+            debugLog('Failed to save company info: ' + e.message, 'error');
+        }
+    } else {
+        alert('LocalStorageが利用できないため、設定は保存されませんでした。\nページを閉じると入力内容は失われます。');
+        debugLog('Company info not saved because storage is unavailable.', 'warn');
+    }
+}
+
+function loadCompanyInfo() {
+    document.getElementById('companyName').value = companyInfo.name || '';
+    document.getElementById('companyPostal').value = companyInfo.postal || '';
+    document.getElementById('companyAddress').value = companyInfo.address || '';
+    document.getElementById('companyPhone').value = companyInfo.phone || '';
+    document.getElementById('companyFax').value = companyInfo.fax || '';
+
+    [
+        { infoKey: 'logo', preview: companyLogoPreview, removeBtn: removeLogoBtn },
+        { infoKey: 'stamp', preview: companyStampPreview, removeBtn: removeStampBtn }
+    ].forEach(({ infoKey, preview, removeBtn }) => {
+        if (companyInfo[infoKey]) {
+            preview.src = companyInfo[infoKey];
+            preview.classList.remove('hidden');
+            removeBtn.classList.remove('hidden');
+        } else {
+            preview.src = '';
+            preview.classList.add('hidden');
+            removeBtn.classList.add('hidden');
+        }
+    });
+    debugLog('Company info populated into the form.', 'info');
+}
+
+function clearAllSettings() {
+    if (confirm('本当にすべての会社情報と設定をリセットしますか？\n保存されている情報が完全に削除され、元に戻すことはできません。')) {
+        if (storageAvailable) {
+            try {
+                localStorage.removeItem(COMPANY_INFO_KEY);
+                localStorage.removeItem(DEBUG_KEY);
+                localStorage.removeItem(TIMEOUT_KEY);
+                debugLog('All settings cleared from localStorage.', 'warn');
+            } catch (e) {
+                console.error('Failed to clear settings from localStorage', e);
+                debugLog('Failed to clear settings: ' + e.message, 'error');
+            }
+        }
+        companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
+        isDebugMode = false;
+        pdfTimeoutValue = DEFAULT_TIMEOUT;
+        loadCompanyInfo();
+        debugModeCheckbox.checked = isDebugMode;
+        pdfTimeoutInput.value = pdfTimeoutValue;
+        debugPanel.style.display = 'none';
+        alert('設定をリセットしました。');
+    }
+}
+
+function handleImageUpload(inputElement, previewElement, removeBtn) {
+    const file = inputElement.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+        alert('ファイルサイズが大きすぎます (5MB以下にしてください)');
+        inputElement.value = ''; return;
+    }
+    if (!['image/png', 'image/jpeg', 'image/gif'].includes(file.type)) {
+        alert('PNG, JPG, GIF形式の画像を選択してください。');
+        inputElement.value = ''; return;
+    }
+
     const reader = new FileReader();
-    
     reader.onload = function(e) {
-        const imageType = input.id === 'companyLogo' ? 'logo' : 'stamp';
-        window.companyInfo[imageType] = e.target.result;
-        if (preview) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-        }
-        if (removeBtn) {
-            removeBtn.style.display = 'inline-block';
-        }
-        
-        if (window.storageAvailable) {
-            localStorage.setItem(window.COMPANY_INFO_KEY, JSON.stringify(window.companyInfo));
-            console.log(`[INFO] Company ${imageType} updated.`);
-        }
-    };
-    
+        previewElement.src = e.target.result;
+        previewElement.classList.remove('hidden');
+        removeBtn.classList.remove('hidden');
+    }
+    reader.onerror = function(e) {
+        console.error("File reading error:", e);
+        alert('ファイルの読み込みに失敗しました。');
+        inputElement.value = '';
+    }
     reader.readAsDataURL(file);
-};
+}
 
-window.removeImage = function(preview, removeBtn, input, type) {
-    if (preview) {
-        preview.src = '';
-        preview.style.display = 'none';
-    }
-    if (removeBtn) {
-        removeBtn.style.display = 'none';
-    }
-    if (input) {
-        input.value = '';
-    }
-    
-    if (type && window.companyInfo[type] !== undefined) {
-        window.companyInfo[type] = '';
-        if (window.storageAvailable) {
-            localStorage.setItem(window.COMPANY_INFO_KEY, JSON.stringify(window.companyInfo));
-            console.log(`[INFO] Company ${type} removed.`);
-        }
-    }
-};
-
-window.clearAllSettings = function() {
-    if (!window.storageAvailable) return;
-    
-    if (confirm('すべての設定と会社情報を削除しますか？この操作は元に戻せません。')) {
-        localStorage.removeItem(window.DEBUG_KEY);
-        localStorage.removeItem(window.TIMEOUT_KEY);
-        localStorage.removeItem(window.COMPANY_INFO_KEY);
-        
-        // デフォルト値に戻す
-        window.isDebugMode = false;
-        window.pdfTimeoutValue = window.DEFAULT_TIMEOUT;
-        window.companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
-        
-        // UI更新
-        const debugPanel = document.getElementById('debugPanel');
-        const debugModeCheckbox = document.getElementById('debugMode');
-        const pdfTimeoutInput = document.getElementById('pdfTimeout');
-        const companySettingsForm = document.getElementById('companySettingsForm');
-        const companyLogoPreview = document.getElementById('companyLogoPreview');
-        const removeLogoBtn = document.getElementById('removeLogoBtn');
-        const companyStampPreview = document.getElementById('companyStampPreview');
-        const removeStampBtn = document.getElementById('removeStampBtn');
-        
-        if (debugPanel) debugPanel.style.display = 'none';
-        if (debugModeCheckbox) debugModeCheckbox.checked = false;
-        if (pdfTimeoutInput) pdfTimeoutInput.value = window.DEFAULT_TIMEOUT;
-        
-        // 会社情報フォームをクリア
-        if (companySettingsForm) {
-            companySettingsForm.reset();
-        }
-        if (companyLogoPreview) {
-            companyLogoPreview.src = '';
-            companyLogoPreview.style.display = 'none';
-        }
-        if (removeLogoBtn) {
-            removeLogoBtn.style.display = 'none';
-        }
-        if (companyStampPreview) {
-            companyStampPreview.src = '';
-            companyStampPreview.style.display = 'none';
-        }
-        if (removeStampBtn) {
-            removeStampBtn.style.display = 'none';
-        }
-        
-        console.log('[WARN] All settings cleared.');
-        alert('設定を初期化しました。');
-    }
-};
-
-// デバッグログ関数
-window.debugLog = function(message, type = 'info') {
-    const timestamp = new Date().toLocaleTimeString();
-    console.log(`[${timestamp}][${type.toUpperCase()}] ${message}`);
-
-    const debugPanel = document.getElementById('debugPanel');
-    const debugLogs = document.getElementById('debugLogs');
-    if (window.isDebugMode && debugPanel && debugPanel.style.display !== 'none' && debugLogs) {
-        const logElement = document.createElement('div');
-        logElement.className = `debug-log debug-${type}`;
-        logElement.textContent = `[${timestamp}] ${message}`;
-        debugLogs.insertBefore(logElement, debugLogs.firstChild);
-        while (debugLogs.children.length > 101) {
-            debugLogs.removeChild(debugLogs.lastChild);
-        }
-    }
-};
-
-console.log('storage.js loaded successfully!');
+function removeImage(previewElement, removeBtn, inputElement, infoKey) {
+    previewElement.src = '';
+    previewElement.classList.add('hidden');
+    removeBtn.classList.add('hidden');
+    inputElement.value = '';
+    alert((infoKey === 'logo' ? 'ロゴ' : '印影') + '画像をプレビューから削除しました。「設定を保存」ボタンで変更を確定してください。');
+}
