@@ -3,23 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="簡単に見積書を作成・PDF出力できるオープンソース見積作成システム">
-    <meta property="og:title" content="自動見積作成システム">
-    <meta property="og:description" content="簡単に見積書を作成・PDF出力できるオープンソース見積作成システム">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://yourusername.github.io/estimate-system/">
-    <meta name="theme-color" content="#2c5eff">
-    <title>自動見積作成システム</title>
-    
-    <!-- スタイルシート -->
-    <link rel="stylesheet" href="css/style.css">
-    
-    <!-- 依存ライブラリ -->
-    <script src="lib/jspdf.umd.min.js"></script>
-    <script src="lib/html2canvas.min.js"></script>
-    
-    <!-- GitHub リボン -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.2.3/gh-fork-ribbon.min.css">
+    <title>建設業見積作成システム</title>
+    <!-- CSSファイルを外部化 -->
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- 外部ライブラリ -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <header>
@@ -32,26 +21,7 @@
                         <line x1="12" y1="22.08" x2="12" y2="12"></line>
                     </svg>
                 </div>
-                <div class="logo-text">自動見積作成システム</div>
-            </div>
-            <div class="header-actions">
-                <button id="dataExportBtn" class="secondary small-btn" title="データをエクスポート">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    エクスポート
-                </button>
-                <label for="dataImport" class="secondary small-btn" title="データをインポート">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    インポート
-                </label>
-                <input type="file" id="dataImport" accept=".json" class="hidden">
+                <div class="logo-text">建設業見積作成システム</div>
             </div>
         </div>
     </header>
@@ -104,7 +74,6 @@
                             </div>
                         </div>
                     </div>
-                    <!-- 以下、明細情報セクション -->
                     <div class="card">
                         <div class="card-title">
                             <div class="card-title-icon">2</div>
@@ -175,7 +144,6 @@
                         </div>
                     </div>
 
-                    <!-- 備考セクション -->
                     <div class="card">
                         <div class="card-title">
                             <div class="card-title-icon">3</div>
@@ -192,7 +160,6 @@
                     </div>
                 </form>
 
-                <!-- 見積結果表示エリア -->
                 <div id="estimateResult" class="estimate-result hidden">
                     <h2>見積計算結果</h2>
                     <div id="calculatedResultArea"> 
@@ -220,12 +187,10 @@
                         <button id="previewBtn" class="secondary">見積書をプレビュー</button>
                         <button id="downloadBtn">PDFダウンロード</button>
                         <button id="printBtn" class="secondary">印刷</button>
-                        <button id="saveEstimateBtn" class="secondary">見積を保存</button>
                     </div>
                 </div>
             </div>
-
-            <!-- プレビュータブ -->
+            
             <div id="previewTab" class="tab-content">
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -240,14 +205,13 @@
                     </div>
                 </div>
             </div>
-
-            <!-- 設定タブ -->
+            
             <div id="settingsTab" class="tab-content">
                 <div class="card">
                     <div class="card-title">
                         <h2>会社情報設定</h2>
                     </div>
-                    <p style="margin-bottom: 20px; font-size: 14px; color: var(--dark-gray);">ここで入力された情報は、見積書プレビューやPDF出力時に反映されます。データは自動保存されますが、必要に応じてヘッダーのエクスポート/インポート機能を使用してバックアップしておくことをお勧めします。</p>
+                    <p style="margin-bottom: 20px; font-size: 14px; color: var(--dark-gray);">ここで入力された情報は、見積書プレビューやPDF出力時に反映されます。入力内容はブラウザに保存されます（プライベートブラウジングモード等では保存されない場合があります）。</p>
                     <form id="companySettingsForm">
                         <div class="form-row">
                             <div class="form-group">
@@ -299,7 +263,6 @@
                     </form>
                 </div>
 
-                <!-- 詳細設定セクション -->
                 <div class="card">
                     <div class="card-title">
                         <h2>詳細設定</h2>
@@ -308,7 +271,7 @@
                         <label for="debugMode" style="display: inline-block; margin-right: 10px;">デバッグモード</label>
                         <input type="checkbox" id="debugMode" style="width: auto; vertical-align: middle;">
                         <span style="font-size: 14px; color: var(--dark-gray);">(PDF生成等で問題が発生した場合にお試しください)</span>
-                        <div id="debugPanel" class="debug-panel">
+                        <div id="debugPanel" class="debug-panel"> 
                             <div style="margin-bottom: 5px; font-weight: bold; border-bottom: 1px solid #666; padding-bottom: 3px;">デバッグログ</div>
                             <div id="debugLogs"></div>
                         </div>
@@ -323,33 +286,15 @@
                         <small style="display: block; margin-top: 5px; color: var(--dark-gray);">会社情報、詳細設定、デバッグモードの状態を初期化します。</small>
                     </div>
                 </div>
-                
-                <!-- GitHub情報セクション (新規追加) -->
-                <div class="card">
-                    <div class="card-title">
-                        <h2>プロジェクト情報</h2>
-                    </div>
-                    <p>このアプリケーションはオープンソースで開発されています。バグ報告や機能リクエストはGitHubリポジトリにお願いします。</p>
-                    <div class="centered-buttons" style="margin-top: 15px;">
-                        <a href="https://github.com/yourusername/estimate-system" target="_blank" class="github-button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-                            </svg>
-                            GitHubリポジトリを見る
-                        </a>
-                    </div>
-                </div>
             </div>
         </div>
     </main>
 
-    <!-- PDF生成用の非表示要素 -->
     <div id="pdfContent" class="pdf-document">
         <div id="pdfEstimateSheet" class="estimate-sheet">
         </div>
     </div>
 
-    <!-- ローディングスピナー -->
     <div id="loadingSpinner" class="spinner hidden">
         <div class="spinner-circle"></div>
         <div class="spinner-text">処理中...</div>
@@ -359,60 +304,17 @@
         </div>
     </div>
 
-    <!-- 見積保存モーダル (新規追加) -->
-    <div id="saveEstimateModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>見積を保存</h2>
-            <div class="form-group">
-                <label for="estimateName">見積名</label>
-                <input type="text" id="estimateName" placeholder="例: 株式会社〇〇様 2025年5月見積">
-            </div>
-            <div class="centered-buttons">
-                <button id="confirmSaveEstimateBtn">保存</button>
-                <button id="cancelSaveEstimateBtn" class="secondary">キャンセル</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- 保存済み見積モーダル (新規追加) -->
-    <div id="savedEstimatesModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>保存済み見積</h2>
-            <div id="savedEstimatesList" class="saved-estimates-list">
-                <p>保存された見積はありません。</p>
-            </div>
-        </div>
-    </div>
-
     <footer>
         <div class="container">
-            <div class="footer-content">
-                <div>© <span id="copyrightYear">2025</span> 自動見積作成システム</div>
-                <div>
-                    <button id="openSavedEstimatesBtn" class="text-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>
-                        保存済み見積を表示
-                    </button>
-                </div>
-            </div>
+            © <span id="copyrightYear">2025</span> 建設業見積作成システム All Rights Reserved.
         </div>
     </footer>
 
-    <!-- GitHub Corner -->
-    <a class="github-fork-ribbon" href="https://github.com/yourusername/estimate-system" data-ribbon="Fork me on GitHub" title="Fork me on GitHub">Fork me on GitHub</a>
-
-    <!-- JavaScriptファイル -->
-    <script src="js/main.js"></script>
-    <script src="js/ui.js"></script>
+    <!-- JavaScript ファイル -->
+    <script src="js/storage.js"></script>
     <script src="js/calculation.js"></script>
-    <script src="js/pdf.js"></script>
+    <script src="js/pdf-generator.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
