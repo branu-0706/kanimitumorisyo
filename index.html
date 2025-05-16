@@ -269,18 +269,18 @@
     </footer>
 
     <!-- デバッグ情報表示 -->
-    <script>
-        window.addEventListener('load', function() {
-            console.log('--- デバッグ情報 ---');
-            console.log('DEFAULT_TIMEOUT defined:', typeof window.DEFAULT_TIMEOUT !== 'undefined');
-            console.log('DEBUG_KEY defined:', typeof window.DEBUG_KEY !== 'undefined');
-            console.log('checkStorage function defined:', typeof window.checkStorage === 'function');
-            console.log('loadSettings function defined:', typeof window.loadSettings === 'function');
-            console.log('updateAmounts function defined:', typeof window.updateAmounts === 'function');
-            console.log('calculateEstimate function defined:', typeof window.calculateEstimate === 'function');
-            console.log('validateForm function defined:', typeof window.validateForm === 'function');
-            console.log('formatCurrency function defined:', typeof window.formatCurrency === 'function');
-        });
-    </script>
+<script>
+    window.addEventListener('load', function() {
+        console.log('--- デバッグ情報 ---');
+        console.log('DEFAULT_TIMEOUT defined:', typeof window.DEFAULT_TIMEOUT !== 'undefined');
+        console.log('DEBUG_KEY defined:', typeof window.DEBUG_KEY !== 'undefined');
+        console.log('checkStorage function defined:', typeof window.checkStorage === 'function');
+        console.log('loadSettings function defined:', typeof window.loadSettings === 'function');
+        console.log('updateAmounts function defined:', typeof window.updateAmounts === 'function');
+        console.log('calculateEstimate function defined:', typeof window.calculateEstimate === 'function');
+        console.log('switchTab function defined:', typeof window.switchTab === 'function');
+        console.log('generatePDF function defined:', typeof window.generatePDF === 'function');
+    });
+</script>
 </body>
 </html>
