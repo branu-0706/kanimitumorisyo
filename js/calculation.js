@@ -2,7 +2,6 @@
 
 // --- 計算関連の関数 ---
 function updateAmounts() {
-    console.log("updateAmounts called"); // デバッグログ追加
     const rows = itemTableBody.rows;
     let subtotal = 0;
 
@@ -12,18 +11,11 @@ function updateAmounts() {
         const markupRateInput = rows[i].querySelector('input[name="markupRate[]"]');
         const amountInput = rows[i].querySelector('input[name="amount[]"]');
 
-        console.log("Row", i, "inputs:", {  // デバッグログ追加
-            qty: qtyInput ? qtyInput.value : "not found",
-            cost: costInput ? costInput.value : "not found",
-            rate: markupRateInput ? markupRateInput.value : "not found"
-        });
-
         const qty = parseFloat(qtyInput.value) || 0;
         const cost = parseFloat(costInput.value) || 0;
         const markupRate = parseFloat(markupRateInput.value) || 0;
 
         const amount = qty * cost * markupRate;
-        console.log("Calculated amount:", amount);  // デバッグログ追加
 
         amountInput.value = formatCurrency(amount);
         subtotal += amount;
