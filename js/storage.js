@@ -1,10 +1,10 @@
 'use strict';
 
 // --- 定数定義 ---
-const DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）
 const DEBUG_KEY = 'estimateAppDebugMode';
 const TIMEOUT_KEY = 'estimateAppPdfTimeout';
 const COMPANY_INFO_KEY = 'estimateAppCompanyInfo';
+const DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）を追加
 
 // --- ストレージ関連の関数 ---
 function checkStorage() {
