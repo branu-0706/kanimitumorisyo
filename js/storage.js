@@ -1,16 +1,16 @@
 // storage.js の修正版
 'use strict';
 
-document.addEventListener('DOMContentLoaded', function() {
-    // --- 定数定義 ---
-    const DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）
-    const DEBUG_KEY = 'estimateAppDebugMode'; // 重複定義を削除
-    const TIMEOUT_KEY = 'estimateAppPdfTimeout';
-    const COMPANY_INFO_KEY = 'estimateAppCompanyInfo';
+// --- 定数定義 --- (グローバルスコープに定義)
+window.DEFAULT_TIMEOUT = 15; // PDFタイムアウトデフォルト値（秒）
+window.DEBUG_KEY = 'estimateAppDebugMode';
+window.TIMEOUT_KEY = 'estimateAppPdfTimeout';
+window.COMPANY_INFO_KEY = 'estimateAppCompanyInfo';
 
+document.addEventListener('DOMContentLoaded', function() {
     // --- グローバル変数 ---
     window.pdfGenerationTimeout = null;
-    window.pdfTimeoutValue = DEFAULT_TIMEOUT;
+    window.pdfTimeoutValue = window.DEFAULT_TIMEOUT;
     window.pdfGenerationCancelled = false;
     window.currentTotalCost = 0; // 原価合計
     window.currentItems = []; // 明細データ
@@ -18,198 +18,206 @@ document.addEventListener('DOMContentLoaded', function() {
     window.storageAvailable = false;
     window.isDebugMode = false;
 
-    // --- 要素の取得 ---
-    window.estimateForm = document.getElementById('estimateForm');
-    window.estimateResult = document.getElementById('estimateResult');
-    window.itemTableBody = document.getElementById('itemTableBody');
-    window.addRowBtn = document.getElementById('addRowBtn');
-    window.subtotalElement = document.getElementById('subtotal');
-    window.taxElement = document.getElementById('tax');
-    window.totalElement = document.getElementById('total');
-    window.calculateBtn = document.getElementById('calculateBtn');
-    window.previewBtn = document.getElementById('previewBtn');
-    window.downloadBtn = document.getElementById('downloadBtn');
-    window.printBtn = document.getElementById('printBtn');
-    window.tabs = document.querySelectorAll('.tab');
-    window.tabContents = document.querySelectorAll('.tab-content');
-    window.previewContainer = document.getElementById('previewContainer');
-    window.previewButtons = document.getElementById('previewButtons');
-    window.previewDownloadBtn = document.getElementById('previewDownloadBtn');
-    window.previewPrintBtn = document.getElementById('previewPrintBtn');
-    window.companySettingsForm = document.getElementById('companySettingsForm');
-    window.companyLogoInput = document.getElementById('companyLogo');
-    window.companyLogoPreview = document.getElementById('companyLogoPreview');
-    window.removeLogoBtn = document.getElementById('removeLogoBtn');
-    window.companyStampInput = document.getElementById('companyStamp');
-    window.companyStampPreview = document.getElementById('companyStampPreview');
-    window.removeStampBtn = document.getElementById('removeStampBtn');
-    window.pdfContent = document.getElementById('pdfContent');
-    window.pdfEstimateSheet = document.getElementById('pdfEstimateSheet');
-    window.loadingSpinner = document.getElementById('loadingSpinner');
-    window.loadingSpinnerText = window.loadingSpinner.querySelector('.spinner-text');
-    window.spinnerActions = document.getElementById('spinnerActions');
-    window.cancelPdfBtn = document.getElementById('cancelPdfBtn');
-    window.alternativePdfBtn = document.getElementById('alternativePdfBtn');
-    window.debugModeCheckbox = document.getElementById('debugMode');
-    window.debugPanel = document.getElementById('debugPanel');
-    window.debugLogs = document.getElementById('debugLogs');
-    window.pdfTimeoutInput = document.getElementById('pdfTimeout');
-    window.storageWarning = document.getElementById('storageWarning');
-    window.clearStorageBtn = document.getElementById('clearStorageBtn');
-
-    // --- 初期化処理 ---
-    initialize();
-
-    // --- ストレージ関連の関数（storage.jsから移動） ---
-    function checkStorage() {
+    // --- ストレージ関連の関数 ---
+    window.checkStorage = function() {
         try {
             localStorage.setItem('__test_storage__', 'test');
             localStorage.removeItem('__test_storage__');
             window.storageAvailable = true;
-            debugLog('LocalStorage is available.', 'info');
+            if (typeof window.debugLog === 'function') {
+                window.debugLog('LocalStorage is available.', 'info');
+            } else {
+                console.log('[INFO] LocalStorage is available.');
+            }
         } catch (e) {
             window.storageAvailable = false;
             if (window.storageWarning) window.storageWarning.classList.remove('hidden');
             console.warn('LocalStorage is not available.', e);
-            debugLog('LocalStorage is not available.', 'warn');
+            if (typeof window.debugLog === 'function') {
+                window.debugLog('LocalStorage is not available.', 'warn');
+            }
         }
-    }
+    };
 
-    function initialize() {
-        // Copyright年の設定
-        document.getElementById('copyrightYear').textContent = new Date().getFullYear();
+    // 設定をロードする関数
+    window.loadSettings = function() {
+        if (!window.storageAvailable) return;
 
-        // LocalStorageが使用可能かチェック
-        checkStorage();
+        // デバッグモードの設定をロード
+        const debugMode = localStorage.getItem(window.DEBUG_KEY);
+        window.isDebugMode = debugMode === 'true';
 
-        // 設定をロード
-        loadSettings();
+        // PDFタイムアウト値をロード
+        const timeout = localStorage.getItem(window.TIMEOUT_KEY);
+        if (timeout) {
+            const value = parseInt(timeout, 10);
+            window.pdfTimeoutValue = (!isNaN(value) && value >= 5 && value <= 120) ? value : window.DEFAULT_TIMEOUT;
+        }
 
-        // デバッグパネルの初期表示設定
-        window.debugPanel.style.display = window.isDebugMode ? 'block' : 'none';
-        window.debugModeCheckbox.checked = window.isDebugMode;
+        // デバッグログ出力
+        if (typeof window.debugLog === 'function') {
+            window.debugLog(`Settings loaded - Debug Mode: ${window.isDebugMode}, PDF Timeout: ${window.pdfTimeoutValue}s`, 'info');
+        } else {
+            console.log(`[INFO] Settings loaded - Debug Mode: ${window.isDebugMode}, PDF Timeout: ${window.pdfTimeoutValue}s`);
+        }
+    };
 
-        // PDFタイムアウト値の初期設定
-        window.pdfTimeoutInput.value = window.pdfTimeoutValue;
+    // 会社情報をロードする関数
+    window.loadCompanyInfo = function() {
+        if (!window.storageAvailable) return;
 
-        // 会社情報をフォームに反映
-        loadCompanyInfo();
-
-        // イベントリスナーを設定
-        setupEventListeners();
-
-        // 現在の日付を見積日フィールドに設定
-        document.getElementById('estimateDate').valueAsDate = new Date();
-
-        // 初期明細行の計算を実行
-        updateAmounts();
-
-        // 初期行の削除ボタンの状態更新
-        updateDeleteButtons();
-
-        debugLog('Application initialized', 'info');
-    }
-
-    // --- イベントリスナー設定 ---
-    function setupEventListeners() {
-        // タブ切り替え
-        window.tabs.forEach(tab => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
-        
-        // 明細行追加
-        window.addRowBtn.addEventListener('click', addItemRow);
-        
-        // 見積計算
-        window.estimateForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (validateForm()) calculateEstimate();
-        });
-        
-        // プレビュー・印刷・PDF
-        window.previewBtn.addEventListener('click', () => switchTab('preview'));
-        window.downloadBtn.addEventListener('click', generatePDF);
-        window.printBtn.addEventListener('click', printEstimate);
-        window.previewDownloadBtn.addEventListener('click', generatePDF);
-        window.previewPrintBtn.addEventListener('click', printEstimate);
-        
-        // 会社情報設定
-        window.companySettingsForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            saveCompanyInfo();
-        });
-        
-        // 画像アップロード
-        window.companyLogoInput.addEventListener('change', () => 
-            handleImageUpload(window.companyLogoInput, window.companyLogoPreview, window.removeLogoBtn));
-        window.companyStampInput.addEventListener('change', () => 
-            handleImageUpload(window.companyStampInput, window.companyStampPreview, window.removeStampBtn));
-        
-        // 画像削除
-        window.removeLogoBtn.addEventListener('click', () => 
-            removeImage(window.companyLogoPreview, window.removeLogoBtn, window.companyLogoInput, 'logo'));
-        window.removeStampBtn.addEventListener('click', () => 
-            removeImage(window.companyStampPreview, window.removeStampBtn, window.companyStampInput, 'stamp'));
-        
-        // デバッグモード
-        window.debugModeCheckbox.addEventListener('change', function() {
-            window.isDebugMode = this.checked;
-            window.debugPanel.style.display = window.isDebugMode ? 'block' : 'none';
-            if (window.storageAvailable) localStorage.setItem(DEBUG_KEY, window.isDebugMode);
-            if (window.isDebugMode) debugLog('Debug mode enabled.', 'warn');
-            else console.log('[INFO] Debug mode disabled.');
-        });
-        
-        // PDF生成タイムアウト
-        window.pdfTimeoutInput.addEventListener('change', function() {
-            let value = parseInt(this.value, 10);
-            if (isNaN(value) || value < 5 || value > 120) {
-                value = DEFAULT_TIMEOUT;
-                this.value = value;
+        const savedInfo = localStorage.getItem(window.COMPANY_INFO_KEY);
+        if (savedInfo) {
+            try {
+                const info = JSON.parse(savedInfo);
+                window.companyInfo = Object.assign({}, window.companyInfo, info);
+                
+                // フォームに値をセット
+                if (window.companySettingsForm) {
+                    window.companySettingsForm.querySelector('#companyName').value = window.companyInfo.name || '';
+                    window.companySettingsForm.querySelector('#companyPostal').value = window.companyInfo.postal || '';
+                    window.companySettingsForm.querySelector('#companyAddress').value = window.companyInfo.address || '';
+                    window.companySettingsForm.querySelector('#companyPhone').value = window.companyInfo.phone || '';
+                    window.companySettingsForm.querySelector('#companyFax').value = window.companyInfo.fax || '';
+                    
+                    // ロゴとスタンプの画像を設定
+                    if (window.companyInfo.logo && window.companyLogoPreview) {
+                        window.companyLogoPreview.src = window.companyInfo.logo;
+                        window.companyLogoPreview.style.display = 'block';
+                        if (window.removeLogoBtn) window.removeLogoBtn.style.display = 'inline-block';
+                    }
+                    
+                    if (window.companyInfo.stamp && window.companyStampPreview) {
+                        window.companyStampPreview.src = window.companyInfo.stamp;
+                        window.companyStampPreview.style.display = 'block';
+                        if (window.removeStampBtn) window.removeStampBtn.style.display = 'inline-block';
+                    }
+                }
+                
+                if (typeof window.debugLog === 'function') {
+                    window.debugLog('Company information loaded.', 'info');
+                } else {
+                    console.log('[INFO] Company information loaded.');
+                }
+            } catch (e) {
+                console.error('Failed to parse company information.', e);
+                if (typeof window.debugLog === 'function') {
+                    window.debugLog('Failed to parse company information: ' + e.message, 'error');
+                }
             }
-            window.pdfTimeoutValue = value;
-            if (window.storageAvailable) localStorage.setItem(TIMEOUT_KEY, window.pdfTimeoutValue);
-            debugLog(`PDF timeout set to ${window.pdfTimeoutValue} seconds.`, 'info');
-        });
+        }
+    };
+
+    // 会社情報を保存する関数
+    window.saveCompanyInfo = function() {
+        if (!window.storageAvailable || !window.companySettingsForm) return;
         
-        // 設定リセット
-        window.clearStorageBtn.addEventListener('click', clearAllSettings);
+        const form = window.companySettingsForm;
+        window.companyInfo.name = form.querySelector('#companyName').value.trim();
+        window.companyInfo.postal = form.querySelector('#companyPostal').value.trim();
+        window.companyInfo.address = form.querySelector('#companyAddress').value.trim();
+        window.companyInfo.phone = form.querySelector('#companyPhone').value.trim();
+        window.companyInfo.fax = form.querySelector('#companyFax').value.trim();
         
-        // PDFキャンセル/閉じる
-        window.cancelPdfBtn.addEventListener('click', function() {
-            if (window.cancelPdfBtn.textContent === '閉じる') {
-                hideLoadingSpinner();
+        // ローカルストレージに保存
+        localStorage.setItem(window.COMPANY_INFO_KEY, JSON.stringify(window.companyInfo));
+        
+        if (typeof window.debugLog === 'function') {
+            window.debugLog('Company information saved.', 'info');
+        } else {
+            console.log('[INFO] Company information saved.');
+        }
+        
+        // 成功メッセージを表示
+        alert('会社情報を保存しました。');
+    };
+
+    // 画像アップロード処理
+    window.handleImageUpload = function(input, preview, removeBtn) {
+        if (!input.files || !input.files[0]) return;
+        
+        const file = input.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const imageType = input.id === 'companyLogo' ? 'logo' : 'stamp';
+            window.companyInfo[imageType] = e.target.result;
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            removeBtn.style.display = 'inline-block';
+            
+            if (window.storageAvailable) {
+                localStorage.setItem(window.COMPANY_INFO_KEY, JSON.stringify(window.companyInfo));
+                if (typeof window.debugLog === 'function') {
+                    window.debugLog(`Company ${imageType} updated.`, 'info');
+                } else {
+                    console.log(`[INFO] Company ${imageType} updated.`);
+                }
+            }
+        };
+        
+        reader.readAsDataURL(file);
+    };
+
+    // 画像削除処理
+    window.removeImage = function(preview, removeBtn, input, type) {
+        preview.src = '';
+        preview.style.display = 'none';
+        removeBtn.style.display = 'none';
+        input.value = '';
+        
+        window.companyInfo[type] = '';
+        if (window.storageAvailable) {
+            localStorage.setItem(window.COMPANY_INFO_KEY, JSON.stringify(window.companyInfo));
+            if (typeof window.debugLog === 'function') {
+                window.debugLog(`Company ${type} removed.`, 'info');
             } else {
-                window.pdfGenerationCancelled = true;
-                hideLoadingSpinner();
-                debugLog('PDF generation cancelled by user.', 'warn');
+                console.log(`[INFO] Company ${type} removed.`);
             }
-        });
+        }
+    };
+
+    // 設定をクリアする関数
+    window.clearAllSettings = function() {
+        if (!window.storageAvailable) return;
         
-        // 代替手段（印刷）
-        window.alternativePdfBtn.addEventListener('click', function() {
-            hideLoadingSpinner();
-            printEstimate();
-            debugLog('Alternative action (print) triggered.', 'info');
-        });
-        
-        // 明細行の金額計算イベント
-        setupItemRowListeners();
-    }
-    
-    // 明細行の入力イベントリスナー設定（追加）
-    function setupItemRowListeners() {
-        console.log("Setting up item row listeners");
-        const inputs = document.querySelectorAll('input[name="quantity[]"], input[name="cost[]"], input[name="markupRate[]"]');
-        console.log("Found", inputs.length, "inputs to listen to");
-        
-        inputs.forEach(input => {
-            input.addEventListener('input', function() {
-                console.log("Input event triggered on", this.name);
-                updateAmounts();
-            });
-            input.addEventListener('change', function() {
-                console.log("Change event triggered on", this.name);
-                updateAmounts();
-            });
-        });
-    }
+        if (confirm('すべての設定と会社情報を削除しますか？この操作は元に戻せません。')) {
+            localStorage.removeItem(window.DEBUG_KEY);
+            localStorage.removeItem(window.TIMEOUT_KEY);
+            localStorage.removeItem(window.COMPANY_INFO_KEY);
+            
+            // デフォルト値に戻す
+            window.isDebugMode = false;
+            window.pdfTimeoutValue = window.DEFAULT_TIMEOUT;
+            window.companyInfo = { name: '', postal: '', address: '', phone: '', fax: '', logo: '', stamp: '' };
+            
+            // UI更新
+            if (window.debugPanel) window.debugPanel.style.display = 'none';
+            if (window.debugModeCheckbox) window.debugModeCheckbox.checked = false;
+            if (window.pdfTimeoutInput) window.pdfTimeoutInput.value = window.DEFAULT_TIMEOUT;
+            
+            // 会社情報フォームをクリア
+            if (window.companySettingsForm) {
+                window.companySettingsForm.reset();
+                if (window.companyLogoPreview) {
+                    window.companyLogoPreview.src = '';
+                    window.companyLogoPreview.style.display = 'none';
+                }
+                if (window.removeLogoBtn) window.removeLogoBtn.style.display = 'none';
+                if (window.companyStampPreview) {
+                    window.companyStampPreview.src = '';
+                    window.companyStampPreview.style.display = 'none';
+                }
+                if (window.removeStampBtn) window.removeStampBtn.style.display = 'none';
+            }
+            
+            if (typeof window.debugLog === 'function') {
+                window.debugLog('All settings cleared.', 'warn');
+            } else {
+                console.log('[WARN] All settings cleared.');
+            }
+            
+            alert('設定を初期化しました。');
+        }
+    };
 });
