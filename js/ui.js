@@ -2,24 +2,38 @@
 
 // --- UI関連の関数 ---
 function switchTab(targetTabId) {
+    console.log(`[DEBUG] ui.js: switchTab が呼び出されました。 targetTabId: ${targetTabId}`); // ← 追加
+
     tabs.forEach(t => t.classList.remove('active'));
     tabContents.forEach(c => c.classList.remove('active'));
 
     const activeTab = document.querySelector(`.tab[data-tab="${targetTabId}"]`);
+    if (activeTab) {
+        console.log(`[DEBUG] ui.js: activeTab (${targetTabId}) が見つかりました。`); // ← 追加
+    } else {
+        console.error(`[ERROR] ui.js: activeTab (${targetTabId}) が見つかりません。セレクタ: .tab[data-tab="${targetTabId}"]`); // ← 追加
+    }
+
     const activeContent = document.getElementById(targetTabId + 'Tab');
+    if (activeContent) {
+        console.log(`[DEBUG] ui.js: activeContent (${targetTabId}Tab) が見つかりました。`); // ← 追加
+    } else {
+        console.error(`[ERROR] ui.js: activeContent (${targetTabId}Tab) が見つかりません。ID: ${targetTabId}Tab`); // ← 追加
+    }
 
     if (activeTab && activeContent) {
         activeTab.classList.add('active');
         activeContent.classList.add('active');
-        debugLog(`Switched to tab: ${targetTabId}`, 'info');
+        // debugLog(`Switched to tab: ${targetTabId}`, 'info'); // debugLogは下記で定義
+        console.log(`[INFO] ui.js: Switched to tab: ${targetTabId}`);
         window.scrollTo(0, 0);
 
         if (targetTabId === 'preview' && calculateBtn.dataset.calculated === 'true') {
             updatePreview();
         }
     } else {
-        console.error(`Tab or content not found for id: ${targetTabId}`);
-        debugLog(`Tab switch failed: Could not find elements for ${targetTabId}`, 'error');
+        console.error(`[ERROR] ui.js: Tab or content not found for id: ${targetTabId}`);
+        // debugLog(`Tab switch failed: Could not find elements for ${targetTabId}`, 'error');
     }
 }
 
@@ -51,13 +65,13 @@ function addItemRow() {
         if (itemTableBody.rows.length > 1) {
             row.remove();
             renumberRows();
-            updateAmounts();
+            updateAmounts(); // calculation.js
             updateDeleteButtons();
         }
     });
 
     row.querySelectorAll('input[name="quantity[]"], input[name="cost[]"], input[name="markupRate[]"]')
-       .forEach(input => input.addEventListener('input', updateAmounts));
+        .forEach(input => input.addEventListener('input', updateAmounts)); // calculation.js
 
     updateDeleteButtons();
     row.querySelector('input[name="description[]"]').focus();
@@ -87,7 +101,7 @@ function updatePreview() {
         return;
     }
     try {
-        previewContainer.innerHTML = generateEstimateHTML();
+        previewContainer.innerHTML = generateEstimateHTML(); // pdf-generator.js
         previewButtons.classList.remove('hidden');
         debugLog('Preview updated', 'info');
     } catch (e) {
@@ -121,7 +135,7 @@ function setupLoadingTimeout() {
             alternativePdfBtn.style.display = 'inline-block';
             debugLog('Processing is taking longer than 8 seconds.', 'warn');
         }
-    }, 8000);
+    }, 8000); // 8秒で代替アクション表示
 
     pdfGenerationTimeout = setTimeout(() => {
         clearTimeout(actionTimer);
@@ -130,7 +144,7 @@ function setupLoadingTimeout() {
             alert(`処理がタイムアウトしました (${pdfTimeoutValue}秒)。\nネットワーク接続を確認するか、設定でタイムアウト時間を延長してください。\n問題が解決しない場合は、ブラウザの印刷機能をお試しください。`);
             debugLog('Processing timed out.', 'error');
         }
-    }, pdfTimeoutValue * 1000);
+    }, pdfTimeoutValue * 1000); // storage.jsで設定されたタイムアウト値
 }
 
 function debugLog(message, type = 'info') {
@@ -141,9 +155,11 @@ function debugLog(message, type = 'info') {
         const logElement = document.createElement('div');
         logElement.className = `debug-log debug-${type}`;
         logElement.textContent = `[${timestamp}] ${message}`;
-        debugLogs.insertBefore(logElement, debugLogs.firstChild);
-        while (debugLogs.children.length > 101) {
-            debugLogs.removeChild(debugLogs.lastChild);
+        if (debugLogs) { // debugLogs要素の存在を確認
+            debugLogs.insertBefore(logElement, debugLogs.firstChild);
+            while (debugLogs.children.length > 101) { // ログ上限を100件程度に
+                debugLogs.removeChild(debugLogs.lastChild);
+            }
         }
     }
 }
