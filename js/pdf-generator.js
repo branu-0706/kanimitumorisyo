@@ -7,11 +7,11 @@ function generateEstimateHTML() {
         const project = document.getElementById('project').value;
         let estimateNumber = document.getElementById('estimateNumber').value.trim();
         if (!estimateNumber) {
-            estimateNumber = generateEstimateNumber();
+            estimateNumber = generateEstimateNumber(); // calculation.js
             document.getElementById('estimateNumber').value = estimateNumber;
         }
         const estimateDate = document.getElementById('estimateDate').value;
-        const formattedDate = formatDateJP(estimateDate);
+        const formattedDate = formatDateJP(estimateDate); // calculation.js
 
         const expiryDays = parseInt(document.getElementById('expiryDays').value) || 30;
         let formattedExpiryDate = '';
@@ -19,7 +19,7 @@ function generateEstimateHTML() {
             const expiryDate = new Date(estimateDate);
             if (!isNaN(expiryDate.getTime())) {
                 expiryDate.setDate(expiryDate.getDate() + expiryDays);
-                formattedExpiryDate = formatDateJP(expiryDate.toISOString().split('T')[0]);
+                formattedExpiryDate = formatDateJP(expiryDate.toISOString().split('T')[0]); // calculation.js
             }
         }
 
@@ -96,8 +96,8 @@ function generateEstimateHTML() {
             </div>`;
         return html;
     } catch (e) {
-        debugLog('Error generating estimate HTML: ' + e.message, 'error');
-        console.error('Error generating estimate HTML:', e);
+        // debugLog('Error generating estimate HTML: ' + e.message, 'error'); // ui.js
+        console.error('[ERROR] pdf-generator.js: Error generating estimate HTML:', e);
         return `<div class="alert alert-danger">見積書HTMLの生成中にエラーが発生しました: ${e.message}</div>`;
     }
 }
@@ -105,50 +105,50 @@ function generateEstimateHTML() {
 async function generatePDF() {
     if (!calculateBtn.dataset.calculated) { alert('先に見積を計算してください。'); return; }
     pdfGenerationCancelled = false;
-    showLoadingSpinner('PDFを生成中...');
+    showLoadingSpinner('PDFを生成中...'); // ui.js
 
     try {
         pdfEstimateSheet.innerHTML = generateEstimateHTML();
-        debugLog('PDF estimate sheet HTML generated', 'info');
+        // debugLog('PDF estimate sheet HTML generated', 'info'); // ui.js
+        console.log('[INFO] pdf-generator.js: PDF estimate sheet HTML generated');
+
 
         const headerElement = pdfEstimateSheet.querySelector('.estimate-header');
         const companyInfoElement = pdfEstimateSheet.querySelector('.company-info');
-        const existingStamp = pdfEstimateSheet.querySelector('.company-stamp'); // HTMLテンプレート内の印影を取得
-        if(existingStamp) existingStamp.style.display = 'none'; // 一旦非表示に
+        const existingStamp = pdfEstimateSheet.querySelector('.company-stamp'); 
+        if(existingStamp) existingStamp.style.display = 'none'; 
 
         if (companyInfo.logo && headerElement) {
             const logoImg = new Image();
-            logoImg.onload = () => { debugLog('Company logo loaded for PDF', 'info'); }; // 画像ロード完了ログ
-            logoImg.onerror = () => { debugLog('Company logo failed to load for PDF', 'warn'); }; // エラーログ
+            logoImg.onload = () => console.log('[INFO] pdf-generator.js: Company logo loaded for PDF'); 
+            logoImg.onerror = () => console.warn('[WARN] pdf-generator.js: Company logo failed to load for PDF'); 
             logoImg.src = companyInfo.logo;
             logoImg.className = 'company-logo';
             logoImg.style.position = 'absolute'; logoImg.style.top = '0px'; logoImg.style.right = '0px';
-            // 既存のロゴがあれば削除
             const oldLogo = headerElement.querySelector('.company-logo');
             if (oldLogo) oldLogo.remove();
             headerElement.appendChild(logoImg);
         }
         if (companyInfo.stamp && companyInfoElement) {
             const stampImg = new Image();
-            stampImg.onload = () => { debugLog('Company stamp loaded for PDF', 'info'); };
-            stampImg.onerror = () => { debugLog('Company stamp failed to load for PDF', 'warn'); };
+            stampImg.onload = () => console.log('[INFO] pdf-generator.js: Company stamp loaded for PDF');
+            stampImg.onerror = () => console.warn('[WARN] pdf-generator.js: Company stamp failed to load for PDF');
             stampImg.src = companyInfo.stamp;
             stampImg.className = 'company-stamp';
             stampImg.style.position = 'absolute'; stampImg.style.top = '-15px'; stampImg.style.right = '-5px';
-            // 既存の印影があれば削除
             const oldStamp = companyInfoElement.querySelector('.company-stamp');
             if (oldStamp) oldStamp.remove();
-            companyInfoElement.appendChild(stampImg); // companyInfoElementに追加
+            companyInfoElement.appendChild(stampImg); 
         }
 
         pdfContent.style.display = 'block';
-        await new Promise(resolve => setTimeout(resolve, 500)); // レンダリングと画像読み込み待ち時間を少し長く
+        await new Promise(resolve => setTimeout(resolve, 500)); 
 
         if (pdfGenerationCancelled) throw new Error("Cancelled");
 
         const { jsPDF } = window.jspdf;
         const canvas = await html2canvas(pdfContent, {
-            scale: 2, useCORS: true, allowTaint: false, logging: isDebugMode, // allowTaint は false推奨
+            scale: 2, useCORS: true, allowTaint: false, logging: isDebugMode, 
             scrollX: 0, scrollY: 0,
             windowWidth: pdfContent.scrollWidth, windowHeight: pdfContent.scrollHeight
         });
@@ -169,8 +169,8 @@ async function generatePDF() {
         pdf.addImage(imgData, 'JPEG', margin, margin, pdfWidth - margin * 2, pdfHeight);
         heightLeft -= (pageHeight - margin * 2);
 
-        while (heightLeft > margin) { // 少し余裕を持たせる
-            position -= (pageHeight - margin*2 ); // 重なりを調整
+        while (heightLeft > margin) { 
+            position -= (pageHeight - margin*2 ); 
             pdf.addPage();
             pdf.addImage(imgData, 'JPEG', margin, position + margin , pdfWidth - margin * 2, pdfHeight);
             heightLeft -= (pageHeight - margin * 2);
@@ -178,36 +178,40 @@ async function generatePDF() {
         }
 
         const clientName = document.getElementById('client').value.trim().replace(/[\\/:*?"<>|]/g, '_') || '見積書';
-        const dateStr = document.getElementById('estimateDate').value.replace(/-/g, '') || formatDateJP(new Date().toISOString().split('T')[0]).replace(/年|月|日/g, '');
+        const dateStr = document.getElementById('estimateDate').value.replace(/-/g, '') || formatDateJP(new Date().toISOString().split('T')[0]).replace(/年|月|日/g, ''); // calculation.js
         const fileName = `見積書_${clientName}_${dateStr}.pdf`;
 
         pdf.save(fileName);
-        debugLog(`PDF saved as ${fileName}`, 'info');
+        // debugLog(`PDF saved as ${fileName}`, 'info'); // ui.js
+        console.log(`[INFO] pdf-generator.js: PDF saved as ${fileName}`);
+
 
     } catch (e) {
         if (e.message !== "Cancelled") {
-            console.error('PDF Generation Error:', e);
-            debugLog('PDF Generation Error: ' + e.message, 'error');
+            console.error('[ERROR] pdf-generator.js: PDF Generation Error:', e);
+            // debugLog('PDF Generation Error: ' + e.message, 'error'); // ui.js
             alert('PDF生成中にエラーが発生しました。\n内容が複雑すぎるか、画像に問題がある可能性があります。\nブラウザの印刷機能で代用してください。');
             spinnerActions.style.display = 'flex';
             alternativePdfBtn.style.display = 'inline-block';
             cancelPdfBtn.textContent = '閉じる';
             pdfGenerationTimeout = null;
         } else {
-            debugLog('PDF generation cancelled.', 'warn');
+            // debugLog('PDF generation cancelled.', 'warn'); // ui.js
+            console.warn('[WARN] pdf-generator.js: PDF generation cancelled.');
         }
     } finally {
         if (!pdfGenerationCancelled || cancelPdfBtn.textContent === '閉じる') {
-            hideLoadingSpinner();
+            hideLoadingSpinner(); // ui.js
         }
         pdfContent.style.display = 'none';
-        cancelPdfBtn.textContent = 'キャンセル'; // ボタンテキストを元に戻す
-        debugLog('PDF generation process finished or cancelled.', 'info');
+        cancelPdfBtn.textContent = 'キャンセル'; 
+        // debugLog('PDF generation process finished or cancelled.', 'info'); // ui.js
+        console.log('[INFO] pdf-generator.js: PDF generation process finished or cancelled.');
     }
 }
 
 function printEstimate() {
     if (!calculateBtn.dataset.calculated) { alert('先に見積を計算してください。'); return; }
-    switchTab('preview');
-    setTimeout(() => { window.print(); debugLog('Print dialog invoked.', 'info'); }, 300);
+    switchTab('preview'); // ui.js
+    setTimeout(() => { window.print(); console.log('[INFO] pdf-generator.js: Print dialog invoked.'); }, 300); // ui.js
 }
