@@ -1,12 +1,10 @@
-<!DOCTYPE html><！doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>建設業見積作成システム</title>
-    <!-- CSSファイルを外部化 -->
     <link rel="stylesheet" href="css/styles.css">
-    <!-- 外部ライブラリ -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -125,7 +123,7 @@
                                     </tr>
                                 </tbody>
                             </table>
-                        </div> 
+                        </div>
                         <button type="button" id="addRowBtn" class="add-row-btn">+ 明細を追加</button>
 
                         <div class="totals-container">
@@ -162,7 +160,7 @@
 
                 <div id="estimateResult" class="estimate-result hidden">
                     <h2>見積計算結果</h2>
-                    <div id="calculatedResultArea"> 
+                    <div id="calculatedResultArea">
                         <h4>計算結果概要</h4>
                         <div>
                             <span>見積金額 (税抜):</span>
@@ -190,7 +188,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div id="previewTab" class="tab-content">
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -205,7 +203,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div id="settingsTab" class="tab-content">
                 <div class="card">
                     <div class="card-title">
@@ -242,7 +240,7 @@
                                 <label for="companyLogo">会社ロゴ画像</label>
                                 <input type="file" id="companyLogo" name="companyLogo" accept="image/png, image/jpeg, image/gif">
                                 <div class="logo-upload-container">
-                                    <img id="companyLogoPreview" class="company-logo-preview hidden" ="" alt="ロゴプレビュー">
+                                    <img id="companyLogoPreview" class="company-logo-preview hidden" src="" alt="ロゴプレビュー">
                                     <button type="button" id="removeLogoBtn" class="secondary hidden" style="margin-top: 5px; font-size: 12px; padding: 4px 8px;">画像を削除</button>
                                 </div>
                                 <small style="display: block; margin-top: 5px; color: var(--dark-gray);">推奨: 横長、背景透過PNG</small>
@@ -251,7 +249,7 @@
                                 <label for="companyStamp">会社印影画像</label>
                                 <input type="file" id="companyStamp" name="companyStamp" accept="image/png, image/jpeg">
                                 <div class="logo-upload-container">
-                                    <img id="companyStampPreview" class="company-logo-preview hidden" ="" alt="印影プレビュー">
+                                    <img id="companyStampPreview" class="company-logo-preview hidden" src="" alt="印影プレビュー">
                                     <button type="button" id="removeStampBtn" class="secondary hidden" style="margin-top: 5px; font-size: 12px; padding: 4px 8px;">画像を削除</button>
                                 </div>
                                 <small style="display: block; margin-top: 5px; color: var(--dark-gray);">推奨: 正方形、背景透過PNG</small>
@@ -271,7 +269,7 @@
                         <label for="debugMode" style="display: inline-block; margin-right: 10px;">デバッグモード</label>
                         <input type="checkbox" id="debugMode" style="width: auto; vertical-align: middle;">
                         <span style="font-size: 14px; color: var(--dark-gray);">(PDF生成等で問題が発生した場合にお試しください)</span>
-                        <div id="debugPanel" class="debug-panel"> 
+                        <div id="debugPanel" class="debug-panel">
                             <div style="margin-bottom: 5px; font-weight: bold; border-bottom: 1px solid #666; padding-bottom: 3px;">デバッグログ</div>
                             <div id="debugLogs"></div>
                         </div>
@@ -310,11 +308,10 @@
         </div>
     </footer>
 
-    <!-- JavaScript ファイル -->
-　　<script ="js/main.js"></script>
-　　<script ="js/storage.js"></script>
-　　<script ="js/calculation.js"></script>
-　　<script ="js/pdf-generator.js"></script>
-　　<script ="js/ui.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/calculation.js"></script>
+    <script src="js/pdf-generator.js"></script>
+    <script src="js/ui.js"></script>
 </body>
 </html>
