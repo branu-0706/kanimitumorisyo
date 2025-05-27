@@ -2,7 +2,18 @@
 
 // --- 計算関連の関数 ---
 function updateAmounts() {
+    console.log('[DEBUG] calculation.js: updateAmounts 関数が呼び出されました。'); // ← 追加
+
+    if (typeof itemTableBody === 'undefined' || itemTableBody === null) {
+        console.error('[ERROR] calculation.js: itemTableBody が未定義またはnullです in updateAmounts'); // ← 追加
+        return;
+    }
     const rows = itemTableBody.rows;
+    if (!rows) {
+        console.error('[ERROR] calculation.js: itemTableBody.rows が見つかりません in updateAmounts'); // ← 追加
+        return;
+    }
+    console.log(`[DEBUG] calculation.js: ${rows.length} 行を処理します in updateAmounts.`); // ← 追加
     let subtotal = 0;
 
     for (let i = 0; i < rows.length; i++) {
@@ -11,11 +22,18 @@ function updateAmounts() {
         const markupRateInput = rows[i].querySelector('input[name="markupRate[]"]');
         const amountInput = rows[i].querySelector('input[name="amount[]"]');
 
+        if (!qtyInput || !costInput || !markupRateInput || !amountInput) {
+            console.error(`[ERROR] calculation.js: 入力フィールドが見つかりません 行 ${i}`); // ← 追加
+            continue;
+        }
+
+        console.log(`[DEBUG] calculation.js: 行 ${i}: 原価入力値="${costInput.value}", 掛け率入力値="${markupRateInput.value}"`); // ← 追加
         const qty = parseFloat(qtyInput.value) || 0;
         const cost = parseFloat(costInput.value) || 0;
         const markupRate = parseFloat(markupRateInput.value) || 0;
 
         const amount = qty * cost * markupRate;
+        console.log(`[DEBUG] calculation.js: 行 ${i}: qty=${qty}, cost=${cost}, markupRate=${markupRate}, 計算された金額=${amount}`); // ← 追加
 
         amountInput.value = formatCurrency(amount);
         subtotal += amount;
@@ -24,9 +42,17 @@ function updateAmounts() {
     const tax = subtotal * 0.1;
     const total = subtotal + tax;
 
+    if (typeof subtotalElement === 'undefined' || subtotalElement === null ||
+        typeof taxElement === 'undefined' || taxElement === null ||
+        typeof totalElement === 'undefined' || totalElement === null) {
+        console.error('[ERROR] calculation.js: 小計・税・合計の表示用Elementが見つかりません'); // ← 追加
+        return;
+    }
+
     subtotalElement.textContent = formatCurrency(Math.round(subtotal));
     taxElement.textContent = formatCurrency(Math.round(tax));
     totalElement.textContent = formatCurrency(Math.round(total));
+    console.log(`[DEBUG] calculation.js: 合計更新: 小計=${formatCurrency(Math.round(subtotal))}, 税=${formatCurrency(Math.round(tax))}, 総計=${formatCurrency(Math.round(total))}`); // ← 追加
 }
 
 function calculateEstimate() {
@@ -75,8 +101,10 @@ function calculateEstimate() {
     } else {
         grossMarginElement.textContent = `${grossMarginPercent.toFixed(1)}%`;
     }
+    // ui.jsのdebugLogが使えるか不明なため、重要な箇所はconsole.logも検討
+    // debugLog(`Estimate calculated. Raw Total Cost: ${currentTotalCost}, Raw Estimate Subtotal: ${estimateSubtotal}, Gross Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`, 'info');
+    console.log(`[INFO] calculation.js: Estimate calculated. Total Cost: ${currentTotalCost}, Subtotal: ${estimateSubtotal}`);
 
-    debugLog(`Estimate calculated. Raw Total Cost: ${currentTotalCost}, Raw Estimate Subtotal: ${estimateSubtotal}, Gross Margin: ${isNaN(grossMarginPercent) ? 'N/A' : grossMarginPercent.toFixed(1)}%`, 'info');
 
     estimateResult.classList.remove('hidden');
     estimateResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -156,7 +184,7 @@ function generateEstimateNumber() {
     const now = new Date();
     const year = now.getFullYear();
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0'); // 修正: 重複定義と全角文字削除
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     return `Q-${year}${month}${day}-${random}`;
 }
